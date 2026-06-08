@@ -57,10 +57,10 @@ export default function CategoryCard({ guide, postalCode, onPress }: Props) {
 
       {/* Deals list (left-aligned) */}
       <View className="border-t border-gray-100 pt-2">
-        {guide.deals.map((deal, i) => {
+        {guide.deals.map((deal) => {
           const unit = parsePriceUnit(deal.price_text);
           return (
-            <Text key={i} className="text-xs text-gray-600 mb-0.5">
+            <Text key={deal.name} className="text-xs text-gray-600 mb-0.5">
               {deal.zh_name}
               {" · "}
               <Text className="text-green-600 font-semibold">

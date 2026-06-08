@@ -17,16 +17,21 @@ export default function RecommendationsScreen() {
   const [data, setData] = useState<RecommendationsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!postalCode) return;
+    let cancelled = false;
     setLoading(true);
     setError("");
     getRecommendations(postalCode)
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [postalCode]);
+      .then(d => { if (!cancelled) setData(d); })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "加载失败，请重试");
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [postalCode, retryKey]);
 
   if (!postalCode) {
     return (
@@ -53,14 +58,7 @@ export default function RecommendationsScreen() {
         <Text className="text-red-500 text-center mb-4">{error}</Text>
         <TouchableOpacity
           className="bg-blue-500 rounded-lg px-6 py-3"
-          onPress={() => {
-            setLoading(true);
-            setError("");
-            getRecommendations(postalCode)
-              .then(setData)
-              .catch((e: Error) => setError(e.message))
-              .finally(() => setLoading(false));
-          }}
+          onPress={() => setRetryKey(k => k + 1)}
         >
           <Text className="text-white font-bold">重新查找</Text>
         </TouchableOpacity>
