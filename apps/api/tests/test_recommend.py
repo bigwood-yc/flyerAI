@@ -1,5 +1,6 @@
 """Recommendation engine — Phase 5. No network."""
 
+from flipp.enrich import CATEGORIES
 from flipp.recommend import RecommendationEngine
 
 
@@ -33,7 +34,6 @@ def _flyer(store, items):
 
 
 def _enr(cat, zh, is_grocery=True):
-    from flipp.enrich import CATEGORIES
     emoji, cat_zh = CATEGORIES.get(cat, ("🛒", "商品"))
     return {"category": cat, "emoji": emoji, "category_zh": cat_zh,
             "zh_name": zh, "is_grocery": is_grocery, "enriched": True}
@@ -105,4 +105,11 @@ def test_each_category_block_has_max_three_deals():
     engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
     result = engine.generate("L3R0B1")
     produce = next(g for g in result["weekly_guide"] if g["category"] == "produce")
-    assert len(produce["deals"]) <= 3
+    assert len(produce["deals"]) == 3
+
+
+def test_empty_flyers_returns_empty_guide():
+    engine = RecommendationEngine(FakeSvc([], {}), FakeEnricher({}))
+    result = engine.generate("L3R0B1")
+    assert result["weekly_guide"] == []
+    assert result["shopping_route"] == []

@@ -19,6 +19,7 @@ class RecommendationEngine:
         flyers = listing.get("flyers", [])
 
         # Collect priced grocery items per category across all stores
+        # "other" is excluded: it maps to non-food items — those go in the is_grocery filter
         category_items: dict[str, list[dict]] = {
             cat: [] for cat in CATEGORIES if cat != "other"
         }
@@ -54,11 +55,11 @@ class RecommendationEngine:
             if not items:
                 continue
             # Best store = the one with the single cheapest item in this category
-            best_item = min(items, key=lambda x: x["price"])
+            best_item = min(items, key=lambda x: float(x["price"]))
             best_store = best_item["store"]
             store_items = sorted(
                 [i for i in items if i["store"] == best_store],
-                key=lambda x: x["price"],
+                key=lambda x: float(x["price"]),
             )
             emoji, cat_zh = CATEGORIES[cat]
             weekly_guide.append({
