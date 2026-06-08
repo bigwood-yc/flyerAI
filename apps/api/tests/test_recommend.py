@@ -1,0 +1,108 @@
+"""Recommendation engine — Phase 5. No network."""
+
+from flipp.recommend import RecommendationEngine
+
+
+class FakeSvc:
+    def __init__(self, flyers, flyer_map):
+        self._flyers = flyers
+        self._flyer_map = flyer_map
+
+    def get_grocery_flyers(self, postal_code):
+        return {"postal_code": postal_code, "stale": False, "flyers": self._flyers}
+
+    def get_flyer(self, store, postal_code):
+        return self._flyer_map.get(store)
+
+
+class FakeEnricher:
+    def __init__(self, mapping):
+        self._mapping = mapping
+
+    def enrich(self, names):
+        return {n: self._mapping[n] for n in names if n in self._mapping}
+
+
+def _item(name, price, store):
+    return {"name": name, "price": price, "valid_from": None, "valid_to": None,
+            "merchant": store, "flyer_id": 1}
+
+
+def _flyer(store, items):
+    return {"store": store, "stale": False, "items": items}
+
+
+def _enr(cat, zh, is_grocery=True):
+    from flipp.enrich import CATEGORIES
+    emoji, cat_zh = CATEGORIES.get(cat, ("🛒", "商品"))
+    return {"category": cat, "emoji": emoji, "category_zh": cat_zh,
+            "zh_name": zh, "is_grocery": is_grocery, "enriched": True}
+
+
+def test_best_store_per_category_is_lowest_price():
+    flyers = [{"id": 1, "merchant": "A"}, {"id": 2, "merchant": "B"}]
+    flyer_map = {
+        "A": _flyer("A", [_item("SPINACH", 3.0, "A")]),
+        "B": _flyer("B", [_item("KALE", 2.0, "B")]),
+    }
+    enr_map = {
+        "SPINACH": _enr("produce", "菠菜"),
+        "KALE":    _enr("produce", "羽衣甘蓝"),
+    }
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L3R0B1")
+
+    assert result["postal_code"] == "L3R0B1"
+    produce = next(g for g in result["weekly_guide"] if g["category"] == "produce")
+    assert produce["best_store"] == "B"
+
+
+def test_shopping_route_ordered_by_category_wins():
+    flyers = [{"id": 1, "merchant": "A"}, {"id": 2, "merchant": "B"}]
+    flyer_map = {
+        "A": _flyer("A", [_item("BEEF", 5.0, "A"), _item("MILK", 3.0, "A")]),
+        "B": _flyer("B", [_item("SPINACH", 2.0, "B")]),
+    }
+    enr_map = {
+        "BEEF":   _enr("meat", "牛肉"),
+        "MILK":   _enr("dairy", "牛奶"),
+        "SPINACH": _enr("produce", "菠菜"),
+    }
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L3R0B1")
+    assert result["shopping_route"][0] == "A"  # A wins 2 categories
+
+
+def test_missing_flyer_is_skipped():
+    flyers = [{"id": 1, "merchant": "A"}, {"id": 2, "merchant": "Ghost"}]
+    flyer_map = {"A": _flyer("A", [_item("MILK", 4.0, "A")])}
+    enr_map = {"MILK": _enr("dairy", "牛奶")}
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L3R0B1")
+    dairy = next(g for g in result["weekly_guide"] if g["category"] == "dairy")
+    assert dairy["best_store"] == "A"
+
+
+def test_non_grocery_items_excluded():
+    flyers = [{"id": 1, "merchant": "A"}]
+    flyer_map = {"A": _flyer("A", [_item("SHAMPOO", 5.0, "A"), _item("BEEF", 8.0, "A")])}
+    enr_map = {
+        "SHAMPOO": _enr("other", "洗发水", is_grocery=False),
+        "BEEF":    _enr("meat", "牛肉"),
+    }
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L3R0B1")
+    cats = [g["category"] for g in result["weekly_guide"]]
+    assert "other" not in cats
+    assert "meat" in cats
+
+
+def test_each_category_block_has_max_three_deals():
+    flyers = [{"id": 1, "merchant": "A"}]
+    items = [_item(f"VEG{i}", float(i), "A") for i in range(1, 6)]
+    flyer_map = {"A": _flyer("A", items)}
+    enr_map = {f"VEG{i}": _enr("produce", f"蔬菜{i}") for i in range(1, 6)}
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L3R0B1")
+    produce = next(g for g in result["weekly_guide"] if g["category"] == "produce")
+    assert len(produce["deals"]) <= 3
