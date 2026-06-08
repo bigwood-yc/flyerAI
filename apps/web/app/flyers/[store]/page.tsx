@@ -60,7 +60,7 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
 
       <div className="bg-white rounded-xl border border-gray-200 px-4">
         {groceries.length === 0 ? (
-          <p className="py-8 text-center text-gray-400">暂无商品数据</p>
+          <p className="py-8 text-center text-gray-400">暂无商品数据 / No items available</p>
         ) : (
           groceries.map((item, i) => <ItemRow key={i} item={item} />)
         )}

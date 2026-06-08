@@ -41,11 +41,11 @@ export default async function RecommendationsPage({ searchParams }: Props) {
       {data.shopping_route.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
           <div className="text-sm font-semibold text-blue-800 mb-1">
-            🗺 建议购物路线 / Shopping Route
+            <span aria-hidden="true">🗺</span> 建议购物路线 / Shopping Route
           </div>
           <div className="flex flex-wrap gap-x-2 gap-y-1">
             {data.shopping_route.map((store, i) => (
-              <span key={store} className="text-blue-700 text-sm">
+              <span key={i} className="text-blue-700 text-sm">
                 {i + 1}. {store}
                 {i < data.shopping_route.length - 1 ? " →" : ""}
               </span>

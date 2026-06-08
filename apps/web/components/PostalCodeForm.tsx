@@ -22,12 +22,14 @@ export default function PostalCodeForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <label className="block text-sm text-gray-600">
+      <label htmlFor="postal-code" className="block text-sm text-gray-600">
         邮政编码 / Postal Code
       </label>
       <div className="flex gap-2">
         <input
+          id="postal-code"
           type="text"
+          autoComplete="postal-code"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="例如 L3R 0B1"
