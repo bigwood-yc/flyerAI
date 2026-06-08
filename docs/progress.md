@@ -80,11 +80,21 @@ Canonical task log. Mirrored in the project document (Grocery Flyer AI Recommend
 - 无障碍：label/input 用 htmlFor/id 关联，装饰性 emoji 加 `aria-hidden`。
 - 启动：`cd apps/web && npm run dev`（需 API 服务先在 :8000 运行）
 
+### 移动端 App — DONE（PR: feat/expo-mobile-app）
+
+- `apps/mobile/`：Expo SDK 51 + Expo Router 3.5 + NativeWind v4，iOS + Android 双平台。
+- 底部三 Tab：🏠 首页（邮编输入 + 格式校验）/ ⭐ 推荐（品类卡片 + Google Maps 导航）/ 🏪 超市（传单列表）。
+- Stack 页传单详情：品类 chip 横向滚动筛选 + 商品列表（中文名 + 价格绿字 + 计价单位 /lb /bag 等）。
+- 后端新增 `price_text` 字段（`_clean_item` or-chain），推荐引擎 deals 同步携带，Web 端不受影响。
+- React Context 共享邮编全局状态；`parsePriceUnit()` 解析计价单位。
+- 「导航 →」按钮：`Linking.openURL` 打开 `https://www.google.com/maps/search/{Store}+near+{PostalCode}`，无需 Maps SDK。
+- useEffect 取消机制（cancelled flag）+ retryKey 重试模式，防止竞态条件。
+- 10 个单元/组件测试（parsePriceUnit × 6 + PostalCodeInput × 4），全部通过。
+- 后端测试：37 个，全部通过。
+
 ---
 
 ## Next（待办）
-
-- （可选）移动端 iOS/Android：Expo + React Native，复用现有 API。
 - （可选）生产部署：Fly.io / Railway（API）+ Vercel（Web）。
 - （可选）价格历史：添加 PostgreSQL，追踪跨周价格变化。
 - 升级 Next.js 至已修复安全漏洞的补丁版本（当前 14.2.3 有已知 CVE）。
