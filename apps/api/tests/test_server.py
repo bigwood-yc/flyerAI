@@ -3,9 +3,6 @@
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 from server import app
 
 client = TestClient(app)
@@ -66,15 +63,41 @@ def test_get_flyer_not_found_returns_404():
 
 
 def test_get_recommendations_ok():
-    with patch("server.RecommendationEngine") as MockEng:
+    with patch("server._make_service"), patch("server._make_enricher"), \
+         patch("server.RecommendationEngine") as MockEng:
         MockEng.return_value.generate.return_value = MOCK_RECO
         resp = client.get("/api/recommendations?postal_code=L3R0B1")
     assert resp.status_code == 200
     body = resp.json()
-    assert "weekly_guide" in body
-    assert "shopping_route" in body
+    assert body["shopping_route"] == ["Walmart"]
+    assert len(body["weekly_guide"]) == 1
 
 
 def test_get_recommendations_missing_postal_code_returns_422():
     resp = client.get("/api/recommendations")
     assert resp.status_code == 422
+
+
+def test_get_flyers_service_error_returns_503():
+    from flipp.client import FlippError
+    with patch("server._make_service") as m:
+        m.return_value.get_grocery_flyers.side_effect = FlippError("down")
+        resp = client.get("/api/flyers?postal_code=L3R0B1")
+    assert resp.status_code == 503
+
+
+def test_get_flyer_service_error_returns_503():
+    from flipp.client import FlippError
+    with patch("server._make_service") as ms, patch("server._make_enricher"):
+        ms.return_value.get_flyer.side_effect = FlippError("down")
+        resp = client.get("/api/flyer?store=Walmart&postal_code=L3R0B1")
+    assert resp.status_code == 503
+
+
+def test_get_recommendations_service_error_returns_503():
+    from flipp.client import FlippError
+    with patch("server._make_service"), patch("server._make_enricher"), \
+         patch("server.RecommendationEngine") as MockEng:
+        MockEng.return_value.generate.side_effect = FlippError("down")
+        resp = client.get("/api/recommendations?postal_code=L3R0B1")
+    assert resp.status_code == 503

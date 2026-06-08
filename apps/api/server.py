@@ -5,6 +5,8 @@ Run:  uvicorn server:app --reload --port 8000
 Docs: http://localhost:8000/docs
 """
 
+import os
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,7 +16,10 @@ from flipp.service import FlyerRetrievalService
 from flipp.enrich import AnthropicClient, Enricher, STABLE_TTL
 from flipp.recommend import RecommendationEngine
 
-_DB = "flipp_cache.db"
+_DB = os.environ.get(
+    "FLIPP_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "flipp_cache.db")
+)
 
 app = FastAPI(title="Grocery Flyer AI API", version="1.0")
 
@@ -35,7 +40,7 @@ def _make_enricher() -> Enricher:
 
 
 @app.get("/api/flyers")
-def get_flyers(postal_code: str = Query(..., min_length=5)):
+def get_flyers(postal_code: str = Query(..., min_length=6)):
     svc = _make_service()
     try:
         return svc.get_grocery_flyers(postal_code)
@@ -46,7 +51,7 @@ def get_flyers(postal_code: str = Query(..., min_length=5)):
 @app.get("/api/flyer")
 def get_flyer(
     store: str = Query(...),
-    postal_code: str = Query(..., min_length=5),
+    postal_code: str = Query(..., min_length=6),
 ):
     svc = _make_service()
     enricher = _make_enricher()
@@ -75,9 +80,9 @@ def get_flyer(
 
 
 @app.get("/api/recommendations")
-def get_recommendations(postal_code: str = Query(..., min_length=5)):
-    engine = RecommendationEngine(_make_service(), _make_enricher())
+def get_recommendations(postal_code: str = Query(..., min_length=6)):
     try:
+        engine = RecommendationEngine(_make_service(), _make_enricher())
         return engine.generate(postal_code)
     except FlippError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
