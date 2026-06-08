@@ -3,11 +3,12 @@ import CategoryBlock from "@/components/CategoryBlock";
 import { getRecommendations } from "@/lib/api";
 
 interface Props {
-  searchParams: { postal_code?: string };
+  searchParams: Promise<{ postal_code?: string }>;
 }
 
 export default async function RecommendationsPage({ searchParams }: Props) {
-  const pc = searchParams.postal_code ?? "";
+  const { postal_code } = await searchParams;
+  const pc = postal_code ?? "";
 
   if (!pc) {
     return (

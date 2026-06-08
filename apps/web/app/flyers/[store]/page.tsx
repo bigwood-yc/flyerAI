@@ -3,13 +3,15 @@ import ItemRow from "@/components/ItemRow";
 import { getFlyer } from "@/lib/api";
 
 interface Props {
-  params: { store: string };
-  searchParams: { postal_code?: string };
+  params: Promise<{ store: string }>;
+  searchParams: Promise<{ postal_code?: string }>;
 }
 
 export default async function StoreFlyerPage({ params, searchParams }: Props) {
-  const store = decodeURIComponent(params.store);
-  const pc = searchParams.postal_code ?? "";
+  const { store: storeParam } = await params;
+  const { postal_code } = await searchParams;
+  const store = decodeURIComponent(storeParam);
+  const pc = postal_code ?? "";
 
   let data;
   try {
