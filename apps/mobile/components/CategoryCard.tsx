@@ -10,10 +10,9 @@ interface Props {
 
 export default function CategoryCard({ guide, postalCode, onPress }: Props) {
   const openMaps = async () => {
-    const query = encodeURIComponent(
-      `${guide.best_store} near ${postalCode}`
-    );
-    const url = `https://www.google.com/maps/search/${query}`;
+    const storePart = guide.best_store.replace(/ /g, "+");
+    const postalPart = postalCode.replace(/ /g, "+");
+    const url = `https://www.google.com/maps/search/${storePart}+near+${postalPart}`;
     try {
       const canOpen = await Linking.canOpenURL(url);
       if (canOpen) {
