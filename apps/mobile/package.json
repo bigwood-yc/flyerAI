@@ -1,0 +1,29 @@
+{
+  "name": "flyer-ai-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "test": "jest --watchAll=false"
+  },
+  "dependencies": {
+    "expo": "~51.0.0",
+    "expo-linking": "~6.3.0",
+    "expo-router": "~3.5.0",
+    "expo-status-bar": "~1.12.1",
+    "nativewind": "^4.0.36",
+    "react": "18.2.0",
+    "react-native": "0.74.5",
+    "tailwindcss": "^3.4.14"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@testing-library/react-native": "^12.4.0",
+    "@types/react": "~18.2.45",
+    "jest": "^29.2.1",
+    "jest-expo": "~51.0.0",
+    "typescript": "~5.3.0"
+  }
+}

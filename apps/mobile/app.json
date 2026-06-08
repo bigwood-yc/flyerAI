@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "本周特价",
+    "slug": "flyer-ai-mobile",
+    "version": "1.0.0",
+    "scheme": "flyerai",
+    "orientation": "portrait",
+    "platforms": ["ios", "android"],
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.flyerai.mobile"
+    },
+    "android": {
+      "package": "com.flyerai.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": ["expo-router"]
+  }
+}
