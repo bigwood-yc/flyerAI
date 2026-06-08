@@ -24,9 +24,9 @@ class FakeEnricher:
         return {n: self._mapping[n] for n in names if n in self._mapping}
 
 
-def _item(name, price, store):
-    return {"name": name, "price": price, "valid_from": None, "valid_to": None,
-            "merchant": store, "flyer_id": 1}
+def _item(name, price, store, price_text=""):
+    return {"name": name, "price": price, "price_text": price_text,
+            "valid_from": None, "valid_to": None, "merchant": store, "flyer_id": 1}
 
 
 def _flyer(store, items):

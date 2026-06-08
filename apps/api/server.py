@@ -68,7 +68,7 @@ def get_flyer(
         {
             "name": it["name"],
             "price": it["price"],
-            "price_text": it.get("price_text", ""),   # 新增
+            "price_text": it["price_text"],
             "category": enr[it["name"]]["category"],
             "emoji": enr[it["name"]]["emoji"],
             "category_zh": enr[it["name"]]["category_zh"],

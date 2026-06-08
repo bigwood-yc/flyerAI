@@ -43,7 +43,7 @@ class RecommendationEngine:
                         "name": it["name"],
                         "zh_name": e["zh_name"],
                         "price": it["price"],
-                        "price_text": it.get("price_text", ""),   # 新增
+                        "price_text": it["price_text"],
                         "store": store,
                         "emoji": e["emoji"],
                         "category_zh": e["category_zh"],

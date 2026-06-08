@@ -115,6 +115,26 @@ def test_get_flyer_returns_items_for_store():
     assert flyer["items"][0]["price_text"] == "$2.50 / bag"   # 新增
 
 
+def test_clean_item_price_text_fallback():
+    """_clean_item uses current_price_text, falls back to price_text, then empty string."""
+    items_variants = [
+        # only current_price_text
+        ({"name": "A", "price": 1.0, "current_price_text": "$1.00 / lb"}, "$1.00 / lb"),
+        # only price_text (no current_price_text)
+        ({"name": "B", "price": 2.0, "price_text": "$2.00 / bag"}, "$2.00 / bag"),
+        # neither field
+        ({"name": "C", "price": 3.0}, ""),
+    ]
+    for raw_item, expected_price_text in items_variants:
+        raw_item.setdefault("valid_from", None)
+        raw_item.setdefault("valid_to", None)
+        client = FakeClient(flyers=SAMPLE_FLYERS, items=[raw_item])
+        svc = FlyerRetrievalService(client, FakeCache())
+        flyer = svc.get_flyer("Walmart", "L3R0B1")
+        assert flyer["items"][0]["price_text"] == expected_price_text, \
+            f"Expected {expected_price_text!r} for raw={raw_item}"
+
+
 def test_get_flyer_none_for_unknown_store():
     svc = FlyerRetrievalService(FakeClient(flyers=SAMPLE_FLYERS), FakeCache())
     assert svc.get_flyer("Costco", "L3R0B1") is None
