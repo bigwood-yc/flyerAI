@@ -31,6 +31,9 @@ def _clean_item(raw: dict, merchant: str, flyer_id) -> dict:
         "flyer_id": flyer_id,
         "name": raw.get("name", ""),
         "price": raw.get("price"),
+        "price_text": (
+            raw.get("current_price_text") or raw.get("price_text") or ""
+        ),
         "valid_from": raw.get("valid_from"),
         "valid_to": raw.get("valid_to"),
     }

@@ -100,7 +100,9 @@ def test_raises_when_no_cache_and_fetch_fails():
 
 def test_get_flyer_returns_items_for_store():
     items = [
-        {"name": "Spinach", "price": 2.5, "valid_from": "a", "valid_to": "b"},
+        {"name": "Spinach", "price": 2.5,
+         "current_price_text": "$2.50 / bag",   # 新增
+         "valid_from": "a", "valid_to": "b"},
         {"name": "Buns", "price": None, "valid_from": "a", "valid_to": "b"},
     ]
     client = FakeClient(flyers=SAMPLE_FLYERS, items=items)
@@ -110,6 +112,7 @@ def test_get_flyer_returns_items_for_store():
     assert flyer["flyer_id"] == 1
     assert flyer["items"][0]["name"] == "Spinach"
     assert flyer["items"][0]["merchant"] == "Walmart"
+    assert flyer["items"][0]["price_text"] == "$2.50 / bag"   # 新增
 
 
 def test_get_flyer_none_for_unknown_store():

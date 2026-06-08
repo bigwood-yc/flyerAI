@@ -13,8 +13,9 @@ MOCK_FLYERS_RESP = {
 }
 MOCK_FLYER_RESP = {
     "store": "Walmart", "stale": False,
-    "items": [{"name": "SPINACH", "price": 2.5, "valid_from": None,
-               "valid_to": None, "merchant": "Walmart", "flyer_id": 1}],
+    "items": [{"name": "SPINACH", "price": 2.5, "price_text": "$2.50 / bag",
+               "valid_from": None, "valid_to": None,
+               "merchant": "Walmart", "flyer_id": 1}],
 }
 MOCK_ENR = {
     "SPINACH": {
@@ -53,6 +54,7 @@ def test_get_flyer_ok_returns_enriched_items():
     assert item["zh_name"] == "菠菜"
     assert item["emoji"] == "🥬"
     assert item["price"] == 2.5
+    assert item["price_text"] == "$2.50 / bag"   # 新增
 
 
 def test_get_flyer_not_found_returns_404():
