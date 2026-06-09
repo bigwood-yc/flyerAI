@@ -1,35 +1,37 @@
 """
 FastAPI dependency: validate Supabase JWT, enforce beta whitelist.
 
+Delegates JWT verification to the Supabase Auth API (supabase.auth.get_user),
+which works regardless of signing algorithm (HS256 legacy or RS256 new keys).
+
 Usage in a route:
     @app.get("/api/foo")
     def foo(user_id: str = Depends(get_current_user)):
         ...
 """
 import os
-import jwt as pyjwt
 from fastapi import HTTPException, Header
 from supabase import create_client, Client
 
 SUPABASE_URL: str = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY: str = os.environ["SUPABASE_SERVICE_KEY"]
-SUPABASE_JWT_SECRET: str = os.environ["SUPABASE_JWT_SECRET"]
 
 _supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
-def _decode_token(token: str) -> dict:
-    """Decode and verify a Supabase-issued JWT. Raises HTTPException on failure."""
+def _get_user_id(token: str) -> str:
+    """Validate a Supabase JWT via the Auth API. Returns user_id on success."""
     try:
-        return pyjwt.decode(
-            token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-    except pyjwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except pyjwt.PyJWTError:
+        response = _supabase.auth.get_user(token)
+        if not response.user or not response.user.id:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return response.user.id
+    except HTTPException:
+        raise
+    except Exception as e:
+        msg = str(e).lower()
+        if "expired" in msg:
+            raise HTTPException(status_code=401, detail="Token expired")
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
@@ -43,10 +45,7 @@ def get_current_user(authorization: str = Header(...)) -> str:
         raise HTTPException(status_code=401, detail="Missing Bearer token")
 
     token = authorization[len("Bearer "):]
-    payload = _decode_token(token)
-    user_id: str | None = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token: missing subject")
+    user_id = _get_user_id(token)
 
     beta_mode = os.environ.get("BETA_MODE", "true").lower() == "true"
     if beta_mode:
