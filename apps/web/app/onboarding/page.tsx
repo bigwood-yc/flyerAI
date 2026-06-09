@@ -19,7 +19,7 @@ export default function OnboardingPage() {
     setLoading(true);
     setError("");
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
+    if (!user) { setLoading(false); router.push("/login"); return; }
 
     const { error: err } = await supabase
       .from("user_profiles")
@@ -97,6 +97,7 @@ export default function OnboardingPage() {
           </button>
           <button
             onClick={() => save(true)}
+            disabled={loading}
             className="w-full text-gray-400 text-sm hover:text-gray-600 py-1"
           >
             跳过 / Skip

@@ -29,22 +29,28 @@ export default function LoginPage() {
   async function verifyOtp() {
     setLoading(true);
     setError("");
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: "email",
-    });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: "email",
+      });
+      if (error) { setError(error.message); return; }
+      if (!data.user) { setError("登录失败，请重试 / Login failed, please try again"); return; }
 
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("onboarding_done")
-      .eq("id", data.user!.id)
-      .single();
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("onboarding_done")
+        .eq("id", data.user.id)
+        .single();
 
-    router.push(profile?.onboarding_done ? "/" : "/onboarding");
-    router.refresh();
+      router.push(profile?.onboarding_done ? "/" : "/onboarding");
+      router.refresh();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "登录失败，请重试");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
