@@ -46,7 +46,7 @@ SELECT
   l.store_name,
   l.response_ms,
   l.searched_at
-FROM search_logs l
+FROM public.search_logs l
 JOIN auth.users u ON u.id = l.user_id
 ORDER BY l.searched_at DESC
 LIMIT 50;
