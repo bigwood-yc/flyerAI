@@ -6,9 +6,13 @@ Docs: http://localhost:8000/docs
 """
 
 import os
+import time
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
+
+from auth import get_current_user
+from activity_log import log_search
 
 from flipp.client import FlippClient, FlippError
 from flipp.cache import SqliteCache
@@ -25,7 +29,10 @@ app = FastAPI(title="Grocery Flyer AI API", version="1.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        os.environ.get("WEB_ORIGIN", ""),   # production domain via env var
+    ],
     allow_methods=["GET"],
     allow_headers=["*"],
 )
@@ -40,21 +47,35 @@ def _make_enricher() -> Enricher:
 
 
 @app.get("/api/flyers")
-def get_flyers(postal_code: str = Query(..., min_length=6)):
+def get_flyers(
+    postal_code: str = Query(..., min_length=6),
+    user_id: str = Depends(get_current_user),
+):
     svc = _make_service()
+    t0 = time.monotonic()
     try:
-        return svc.get_grocery_flyers(postal_code)
+        result = svc.get_grocery_flyers(postal_code)
     except FlippError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    log_search(
+        user_id=user_id,
+        postal_code=postal_code,
+        query_type="flyers",
+        flyer_category="groceries",
+        response_ms=int((time.monotonic() - t0) * 1000),
+    )
+    return result
 
 
 @app.get("/api/flyer")
 def get_flyer(
     store: str = Query(...),
     postal_code: str = Query(..., min_length=6),
+    user_id: str = Depends(get_current_user),
 ):
     svc = _make_service()
     enricher = _make_enricher()
+    t0 = time.monotonic()
     try:
         flyer = svc.get_flyer(store, postal_code)
     except FlippError as exc:
@@ -77,13 +98,33 @@ def get_flyer(
         }
         for it in priced
     ]
+    log_search(
+        user_id=user_id,
+        postal_code=postal_code,
+        query_type="flyer_detail",
+        flyer_category="groceries",
+        store_name=store,
+        response_ms=int((time.monotonic() - t0) * 1000),
+    )
     return {"store": flyer["store"], "stale": flyer["stale"], "items": enriched_items}
 
 
 @app.get("/api/recommendations")
-def get_recommendations(postal_code: str = Query(..., min_length=6)):
+def get_recommendations(
+    postal_code: str = Query(..., min_length=6),
+    user_id: str = Depends(get_current_user),
+):
+    t0 = time.monotonic()
     try:
         engine = RecommendationEngine(_make_service(), _make_enricher())
-        return engine.generate(postal_code)
+        result = engine.generate(postal_code)
     except FlippError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+    log_search(
+        user_id=user_id,
+        postal_code=postal_code,
+        query_type="recommendations",
+        flyer_category="groceries",
+        response_ms=int((time.monotonic() - t0) * 1000),
+    )
+    return result

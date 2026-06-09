@@ -1,11 +1,29 @@
 """FastAPI HTTP layer — unit tests. Service and enricher are mocked."""
 
+import pytest
 from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from server import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def bypass_auth_and_logging():
+    """Bypass JWT auth and Supabase logging for all server tests.
+
+    Key off server.get_current_user (the function bound at server.py import
+    time) so the override matches even when test_auth.py reloads the auth
+    module (creating a different function object for auth.get_current_user).
+    log_search is a plain call so patch() is sufficient.
+    """
+    import server as _server
+    key = _server.get_current_user
+    app.dependency_overrides[key] = lambda: "test-user-id"
+    with patch("server.log_search"):
+        yield
+    app.dependency_overrides.pop(key, None)
 
 MOCK_FLYERS_RESP = {
     "postal_code": "L3R0B1", "stale": False,
