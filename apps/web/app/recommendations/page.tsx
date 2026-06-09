@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CategoryBlock from "@/components/CategoryBlock";
 import { getRecommendations } from "@/lib/api";
+import { createClient } from "@/lib/supabase/server";
 
 interface Props {
   searchParams: Promise<{ postal_code?: string }>;
@@ -9,6 +10,10 @@ interface Props {
 export default async function RecommendationsPage({ searchParams }: Props) {
   const { postal_code } = await searchParams;
   const pc = postal_code ?? "";
+
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? "";
 
   if (!pc) {
     return (
@@ -21,7 +26,7 @@ export default async function RecommendationsPage({ searchParams }: Props) {
 
   let data;
   try {
-    data = await getRecommendations(pc);
+    data = await getRecommendations(pc, token);
   } catch {
     return (
       <div className="text-center py-12 text-red-600">

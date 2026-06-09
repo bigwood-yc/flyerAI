@@ -9,6 +9,8 @@
     "test": "jest --watchAll=false"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.1.1",
+    "@supabase/supabase-js": "^2.108.0",
     "expo": "~51.0.0",
     "expo-linking": "~6.3.0",
     "expo-router": "~3.5.0",

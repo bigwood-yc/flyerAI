@@ -1,5 +1,5 @@
-// API 响应类型定义 + 调用封装
-// 服务端组件直接访问 localhost:8000；浏览器走 Next.js rewrite 代理
+// API response types + fetch helpers.
+// All calls are server-side; token comes from the Supabase server session.
 
 export interface FlyerInfo {
   id: number;
@@ -51,12 +51,14 @@ export interface RecommendationsResponse {
   shopping_route: string[];
 }
 
-// Server components fetch directly; browser calls go through Next.js rewrite
-const API_BASE =
-  typeof window === "undefined" ? "http://localhost:8000" : "";
+// Server-side only: reads from process.env (not NEXT_PUBLIC_)
+const API_BASE = process.env.API_BASE ?? "http://localhost:8000";
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
+async function fetchJson<T>(path: string, token: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(`${res.status}: ${text}`);
@@ -64,25 +66,30 @@ async function fetchJson<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function getFlyers(postalCode: string): Promise<FlyersResponse> {
+export function getFlyers(postalCode: string, token: string): Promise<FlyersResponse> {
   return fetchJson<FlyersResponse>(
-    `/api/flyers?postal_code=${encodeURIComponent(postalCode)}`
+    `/api/flyers?postal_code=${encodeURIComponent(postalCode)}`,
+    token,
   );
 }
 
 export function getFlyer(
   store: string,
-  postalCode: string
+  postalCode: string,
+  token: string,
 ): Promise<FlyerResponse> {
   return fetchJson<FlyerResponse>(
-    `/api/flyer?store=${encodeURIComponent(store)}&postal_code=${encodeURIComponent(postalCode)}`
+    `/api/flyer?store=${encodeURIComponent(store)}&postal_code=${encodeURIComponent(postalCode)}`,
+    token,
   );
 }
 
 export function getRecommendations(
-  postalCode: string
+  postalCode: string,
+  token: string,
 ): Promise<RecommendationsResponse> {
   return fetchJson<RecommendationsResponse>(
-    `/api/recommendations?postal_code=${encodeURIComponent(postalCode)}`
+    `/api/recommendations?postal_code=${encodeURIComponent(postalCode)}`,
+    token,
   );
 }
