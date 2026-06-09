@@ -27,12 +27,10 @@ _DB = os.environ.get(
 
 app = FastAPI(title="Grocery Flyer AI API", version="1.0")
 
+_extra_origins = [o for o in [os.environ.get("WEB_ORIGIN")] if o]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        os.environ.get("WEB_ORIGIN", ""),   # production domain via env var
-    ],
+    allow_origins=["http://localhost:3000"] + _extra_origins,
     allow_methods=["GET"],
     allow_headers=["*"],
 )
