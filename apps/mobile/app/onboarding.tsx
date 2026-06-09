@@ -24,23 +24,29 @@ export default function OnboardingScreen() {
 
   async function complete(skip = false) {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); router.replace("/login"); return; }
+    setError("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
 
-    const { error: err } = await supabase
-      .from("user_profiles")
-      .update({
-        phone: skip ? null : (phone.trim() || null),
-        preferred_postal_code: skip
-          ? null
-          : (postalCode.trim().toUpperCase() || null),
-        onboarding_done: true,
-      })
-      .eq("id", user.id);
+      const { error: err } = await supabase
+        .from("user_profiles")
+        .update({
+          phone: skip ? null : (phone.trim() || null),
+          preferred_postal_code: skip
+            ? null
+            : (postalCode.trim().toUpperCase() || null),
+          onboarding_done: true,
+        })
+        .eq("id", user.id);
 
-    setLoading(false);
-    if (err && !skip) { setError(err.message); return; }
-    router.replace("/(tabs)");
+      if (err) { setError(err.message); return; }
+      router.replace("/(tabs)");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "保存失败，请重试");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

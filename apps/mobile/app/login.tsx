@@ -24,13 +24,18 @@ export default function LoginScreen() {
   async function sendOtp() {
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    setStep("otp");
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: true },
+      });
+      if (error) { setError(error.message); return; }
+      setStep("otp");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "发送失败，请重试");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function verifyOtp() {
