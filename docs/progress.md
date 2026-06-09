@@ -80,6 +80,15 @@ Canonical task log. Mirrored in the project document (Grocery Flyer AI Recommend
 - 无障碍：label/input 用 htmlFor/id 关联，装饰性 emoji 加 `aria-hidden`。
 - 启动：`cd apps/web && npm run dev`（需 API 服务先在 :8000 运行）
 
+### Next.js 升级 — DONE
+
+- `apps/web/package.json`：`next` 14.2.3 → 15.5.19，清除全部 HIGH 级 CVE。
+- 修复三个页面因 Next.js 15 breaking change（`params`/`searchParams` 改为 `Promise<...>`）导致的构建失败：
+  - `app/flyers/[store]/page.tsx`
+  - `app/flyers/page.tsx`
+  - `app/recommendations/page.tsx`
+- 剩余 2 个 moderate 漏洞来自 Next.js 内部捆绑的 `postcss 8.4.31`，不可在项目层面修复，需等 Next.js 官方更新。项目自身 `postcss 8.5.15` 不受影响。
+
 ### 移动端 App — DONE（PR: feat/expo-mobile-app）
 
 - `apps/mobile/`：Expo SDK 51 + Expo Router 3.5 + NativeWind v4，iOS + Android 双平台。
@@ -94,7 +103,48 @@ Canonical task log. Mirrored in the project document (Grocery Flyer AI Recommend
 
 ---
 
+## 2026-06-09
+
+### Auth + 用户日志系统 — DONE（PR: feat/auth-and-logging）
+
+**架构：** Supabase 统一管理 Auth（邮件 OTP）、用户资料、搜索日志；FastAPI JWT 验证；Beta 白名单模式（BETA_MODE env 变量切换）。
+
+**后端（FastAPI）**
+- `apps/api/auth.py`：HS256 JWT 验证 + is_whitelisted 白名单检查（BETA_MODE=true 时生效），7 个单元测试全部通过。
+- `apps/api/activity_log.py`：`log_search()` 写入 search_logs 表，fire-and-forget（异常静默），4 个单元测试全部通过。
+- `apps/api/server.py`：3 个路由全部接入 `Depends(get_current_user)` + `log_search()`，计时 response_ms。
+- `apps/api/conftest.py`：pytest 启动时设置虚拟 Supabase 环境变量。
+- API 总测试数：48 个，全部通过。
+
+**数据库（Supabase）**
+- `supabase/migrations/001_auth_schema.sql`：`user_profiles` 表（phone/preferred_postal_code/is_whitelisted/onboarding_done）+ 触发器自动创建 profile 行 + 分离式 RLS（防止用户自升 is_whitelisted）；`search_logs` 表（user_id/postal_code/query_type/flyer_category/store_name/response_ms）+ 3 个分析索引。
+
+**Web（Next.js 15）**
+- `apps/web/lib/supabase/browser.ts` + `server.ts`：Supabase SSR 客户端（浏览器/服务端分离）。
+- `apps/web/middleware.ts`：session 刷新 + 未登录重定向 /login；redirect 响应携带 Set-Cookie。
+- `apps/web/app/login/page.tsx`：邮件 OTP 两步登录（发送验证码→验证→检查 onboarding_done）。
+- `apps/web/app/onboarding/page.tsx`：填写常用邮编 + 手机号（均可选）。
+- 已有 3 个页面（/flyers、/flyers/[store]、/recommendations）注入 session token 调用 FastAPI。
+- `LogoutButton.tsx`：退出登录，错误处理，router.refresh() 先于 router.push()。
+
+**移动端（Expo 51）**
+- `apps/mobile/lib/supabase.ts`：AsyncStorage 持久化 session，detectSessionInUrl: false。
+- `apps/mobile/lib/api.ts`：fetchJson 自动从 session 提取 access_token 注入 Authorization 头。
+- `apps/mobile/app/login.tsx`：邮件 OTP 两步登录，KeyboardAvoidingView，try/catch/finally。
+- `apps/mobile/app/onboarding.tsx`：常用邮编 + 手机号（均可选），DB 失败统一报错。
+- `apps/mobile/app/_layout.tsx`：auth guard（undefined=加载中→null screen；null=未登录→/login；session=已登录）。
+- 移动端测试：10 个，全部通过。
+
+**安全加固（审查发现并修复）**
+- RLS 分拆 FOR ALL → SELECT + UPDATE with WITH CHECK（防止 is_whitelisted 自升）。
+- search_logs FK 添加 ON DELETE CASCADE（防账号删除阻塞）。
+- BETA_MODE 在函数调用时读取（非模块级），避免测试隔离问题。
+- 中间件 redirect 响应携带完整 Set-Cookie（防 token 丢失）。
+- sendOtp / verifyOtp / complete() 全部包裹 try/catch/finally（防 UI 冻结）。
+
+---
+
 ## Next（待办）
+- **【下一步】** 在 Supabase Dashboard 执行 `supabase/migrations/001_auth_schema.sql` 并填写各 `.env` 文件的真实 Supabase 密钥。
 - （可选）生产部署：Fly.io / Railway（API）+ Vercel（Web）。
 - （可选）价格历史：添加 PostgreSQL，追踪跨周价格变化。
-- 升级 Next.js 至已修复安全漏洞的补丁版本（当前 14.2.3 有已知 CVE）。
