@@ -8,13 +8,12 @@ Usage in a route:
 """
 import os
 import jwt as pyjwt
-from fastapi import Depends, HTTPException, Header
+from fastapi import HTTPException, Header
 from supabase import create_client, Client
 
 SUPABASE_URL: str = os.environ["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY: str = os.environ["SUPABASE_SERVICE_KEY"]
 SUPABASE_JWT_SECRET: str = os.environ["SUPABASE_JWT_SECRET"]
-BETA_MODE: bool = os.environ.get("BETA_MODE", "true").lower() == "true"
 
 _supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
@@ -45,16 +44,22 @@ def get_current_user(authorization: str = Header(...)) -> str:
 
     token = authorization[len("Bearer "):]
     payload = _decode_token(token)
-    user_id: str = payload["sub"]
+    user_id: str | None = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token: missing subject")
 
-    if BETA_MODE:
-        result = (
-            _supabase.table("user_profiles")
-            .select("is_whitelisted")
-            .eq("id", user_id)
-            .maybe_single()
-            .execute()
-        )
+    beta_mode = os.environ.get("BETA_MODE", "true").lower() == "true"
+    if beta_mode:
+        try:
+            result = (
+                _supabase.table("user_profiles")
+                .select("is_whitelisted")
+                .eq("id", user_id)
+                .maybe_single()
+                .execute()
+            )
+        except Exception:
+            raise HTTPException(status_code=503, detail="Auth service temporarily unavailable")
         if not result.data or not result.data.get("is_whitelisted"):
             raise HTTPException(
                 status_code=403,

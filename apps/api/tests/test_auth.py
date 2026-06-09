@@ -1,7 +1,7 @@
 """Tests for apps/api/auth.py — JWT validation and beta whitelist check."""
 import time
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from fastapi import HTTPException
 import jwt as pyjwt
 
@@ -72,13 +72,19 @@ def test_non_whitelisted_raises_403(auth):
         auth.get_current_user(authorization=f"Bearer {token}")
     assert exc.value.status_code == 403
 
-def test_beta_false_skips_whitelist_check(monkeypatch):
+def test_beta_false_skips_whitelist_check(auth, monkeypatch):
     monkeypatch.setenv("BETA_MODE", "false")
-    import importlib, auth as _auth
-    importlib.reload(_auth)
     token = _make_token("user-open")
-    mock_sb = MagicMock()
-    monkeypatch.setattr(_auth, "_supabase", mock_sb)
-    result = _auth.get_current_user(authorization=f"Bearer {token}")
+    result = auth.get_current_user(authorization=f"Bearer {token}")
     assert result == "user-open"
-    mock_sb.table.assert_not_called()
+    auth._supabase.table.assert_not_called()
+
+def test_token_without_sub_raises_401(auth):
+    token = pyjwt.encode(
+        {"aud": "authenticated", "exp": int(time.time()) + 3600},
+        SECRET,
+        algorithm="HS256",
+    )
+    with pytest.raises(HTTPException) as exc:
+        auth.get_current_user(authorization=f"Bearer {token}")
+    assert exc.value.status_code == 401
