@@ -37,13 +37,21 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((c) =>
+      redirectResponse.cookies.set(c.name, c.value),
+    );
+    return redirectResponse;
   }
 
   if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((c) =>
+      redirectResponse.cookies.set(c.name, c.value),
+    );
+    return redirectResponse;
   }
 
   return supabaseResponse;

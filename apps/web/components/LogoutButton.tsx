@@ -7,9 +7,15 @@ export default function LogoutButton() {
   const supabase = createClient();
 
   async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      // Surface the error to the user (simple alert is fine for now)
+      console.error("Sign out failed:", error.message);
+      alert("退出失败，请刷新页面重试");
+      return;
+    }
     router.refresh();
+    router.push("/login");
   }
 
   return (
