@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ItemRow from "@/components/ItemRow";
 import { getFlyer } from "@/lib/api";
+import { createClient } from "@/lib/supabase/server";
 
 interface Props {
   params: Promise<{ store: string }>;
@@ -13,9 +14,13 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
   const store = decodeURIComponent(storeParam);
   const pc = postal_code ?? "";
 
+  const supabase = await createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token ?? "";
+
   let data;
   try {
-    data = await getFlyer(store, pc);
+    data = await getFlyer(store, pc, token);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.startsWith("404")) {
