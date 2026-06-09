@@ -1,4 +1,5 @@
 import { API_BASE } from "../constants/config";
+import { supabase } from "./supabase";
 
 // ── Type definitions ──────────────────────────────────────────────────────────
 
@@ -73,7 +74,15 @@ export function parsePriceUnit(priceText: string): string {
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const headers: Record<string, string> = {};
+  if (session?.access_token) {
+    headers["Authorization"] = `Bearer ${session.access_token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, { headers });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(`${res.status}: ${text}`);
