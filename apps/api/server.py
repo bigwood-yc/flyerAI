@@ -148,7 +148,7 @@ def get_flyer(
     t0 = time.monotonic()
     pc = postal_code.replace(" ", "").upper()
     # Flyer content is FSA-wide (same items across the 6-digit codes in an area)
-    detail_key = f"flyer_detail:{store.strip().lower()}:{pc[:3]}"
+    detail_key = f"flyer_detail_v2:{store.strip().lower()}:{pc[:3]}"
 
     cached = _detail_cache.get(detail_key)
     if cached is not None and not cached[1]:
