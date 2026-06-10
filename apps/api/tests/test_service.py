@@ -30,6 +30,8 @@ class FakeClient:
 
 class FakeCache:
     """In-memory cache that lets a test mark entries fresh or stale."""
+    path = ":memory:"
+
     def __init__(self):
         self.store = {}      # key -> value
         self.stale = set()   # keys that should report stale
@@ -138,3 +140,16 @@ def test_clean_item_price_text_fallback():
 def test_get_flyer_none_for_unknown_store():
     svc = FlyerRetrievalService(FakeClient(flyers=SAMPLE_FLYERS), FakeCache())
     assert svc.get_flyer("Costco", "L3R0B1") is None
+
+
+def test_get_grocery_flyers_includes_distance_km_field():
+    """distance_km key must be present (may be None) on every returned flyer."""
+    client = FakeClient(flyers=[{"id": 1, "merchant": "Walmart"},
+                                 {"id": 2, "merchant": "No Frills"}])
+    cache = FakeCache()
+    svc = FlyerRetrievalService(client, cache)
+    result = svc.get_grocery_flyers("L4C0E6")
+    assert len(result["flyers"]) == 2
+    for f in result["flyers"]:
+        assert "distance_km" in f
+        assert f["distance_km"] is None or isinstance(f["distance_km"], float)

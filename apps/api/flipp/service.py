@@ -18,6 +18,7 @@ without touching the network.
 
 from . import stores
 from .client import FlippError
+from .geocode import postal_code_coords, store_coords_cached, haversine_km, kick_geocoding
 
 
 def _normalize_pc(postal_code: str) -> str:
@@ -73,8 +74,41 @@ class FlyerRetrievalService:
                 if stores.is_grocery_merchant(f.get("merchant", ""))
             ]
 
-        flyers, stale = self._cached_or_refresh(f"flyers:{pc}", refresh)
-        return {"postal_code": pc, "stale": stale, "flyers": flyers}
+        flyer_list, stale = self._cached_or_refresh(f"flyers:{pc}", refresh)
+
+        # Attach distances from geocode cache (non-blocking)
+        user_coords: tuple[float, float] | None = None
+        try:
+            user_coords = postal_code_coords(pc)
+        except Exception:
+            pass
+
+        fsa = pc[:3]
+        flyers_with_dist = []
+        needs_geocoding: list[str] = []
+
+        for f in flyer_list:
+            dist: float | None = None
+            if user_coords:
+                sc = store_coords_cached(f["merchant"], fsa, self.cache)
+                if sc is not None:
+                    dist = round(
+                        haversine_km(user_coords[0], user_coords[1], sc[0], sc[1]), 1
+                    )
+                else:
+                    needs_geocoding.append(f["merchant"])
+            flyers_with_dist.append({**f, "distance_km": dist})
+
+        # Background-geocode any uncached stores (fire-and-forget)
+        if needs_geocoding:
+            kick_geocoding(needs_geocoding, pc, self.cache)
+
+        # Sort: known distances ascending, unknown last (preserving Flipp order among unknowns)
+        known = [(f["distance_km"], i, f) for i, f in enumerate(flyers_with_dist) if f["distance_km"] is not None]
+        unknown = [f for f in flyers_with_dist if f["distance_km"] is None]
+        sorted_flyers = [f for _, _, f in sorted(known, key=lambda x: x[0])] + unknown
+
+        return {"postal_code": pc, "stale": stale, "flyers": sorted_flyers}
 
     def get_flyer(self, store: str, postal_code: str):
         """
