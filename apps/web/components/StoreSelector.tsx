@@ -118,7 +118,7 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
                     </Link>
                     {f.distance_km != null && (
                       <span className="text-xs text-gray-400">
-                        📍 ~{f.distance_km} km
+                        📍 ~{Number(f.distance_km).toFixed(1)} km
                       </span>
                     )}
                   </div>
