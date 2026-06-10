@@ -4,6 +4,7 @@
 export interface FlyerInfo {
   id: number;
   merchant: string;
+  distance_km?: number | null;
 }
 
 export interface FlyersResponse {
@@ -88,9 +89,14 @@ export function getFlyer(
 export function getRecommendations(
   postalCode: string,
   token: string,
+  stores?: string[],
 ): Promise<RecommendationsResponse> {
+  const params = new URLSearchParams({ postal_code: postalCode });
+  if (stores && stores.length > 0) {
+    params.set("stores", stores.join(","));
+  }
   return fetchJson<RecommendationsResponse>(
-    `/api/recommendations?postal_code=${encodeURIComponent(postalCode)}`,
+    `/api/recommendations?${params.toString()}`,
     token,
   );
 }

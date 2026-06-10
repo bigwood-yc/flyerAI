@@ -4,12 +4,15 @@ import { getRecommendations } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
-  searchParams: Promise<{ postal_code?: string }>;
+  searchParams: Promise<{ postal_code?: string; stores?: string }>;
 }
 
 export default async function RecommendationsPage({ searchParams }: Props) {
-  const { postal_code } = await searchParams;
+  const { postal_code, stores: storesParam } = await searchParams;
   const pc = postal_code ?? "";
+  const storeFilter = storesParam
+    ? storesParam.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
 
   const supabase = await createClient();
   const { data: { session } } = await supabase.auth.getSession();
@@ -26,7 +29,7 @@ export default async function RecommendationsPage({ searchParams }: Props) {
 
   let data;
   try {
-    data = await getRecommendations(pc, token);
+    data = await getRecommendations(pc, token, storeFilter);
   } catch {
     return (
       <div className="text-center py-12 text-red-600">
@@ -40,9 +43,24 @@ export default async function RecommendationsPage({ searchParams }: Props) {
       <div>
         <h2 className="text-xl font-bold">本周最优惠</h2>
         <p className="text-sm text-gray-500">
-          This Week's Best Deals · {data.postal_code}
+          This Week&apos;s Best Deals · {data.postal_code}
+          {storeFilter && storeFilter.length > 0 && (
+            <> · 已筛选 {storeFilter.length} 家超市</>
+          )}
         </p>
       </div>
+
+      {storeFilter && storeFilter.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-700 flex items-center justify-between">
+          <span>仅显示：{storeFilter.join("、")}</span>
+          <Link
+            href={`/flyers?postal_code=${pc}`}
+            className="underline text-blue-600 ml-2 flex-shrink-0"
+          >
+            重新选择
+          </Link>
+        </div>
+      )}
 
       {data.shopping_route.length > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">

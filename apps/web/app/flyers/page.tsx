@@ -1,5 +1,5 @@
 import Link from "next/link";
-import StoreCard from "@/components/StoreCard";
+import StoreSelector from "@/components/StoreSelector";
 import { getFlyers } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,19 +37,11 @@ export default async function FlyersPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">邮编 {data.postal_code} 的传单</h2>
-          <p className="text-sm text-gray-500">
-            共 {data.flyers.length} 家超市 / {data.flyers.length} stores
-          </p>
-        </div>
-        <Link
-          href={`/recommendations?postal_code=${pc}`}
-          className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-700"
-        >
-          本周推荐 →
-        </Link>
+      <div>
+        <h2 className="text-xl font-bold">邮编 {data.postal_code} 的传单</h2>
+        <p className="text-sm text-gray-500">
+          共 {data.flyers.length} 家超市 / {data.flyers.length} stores
+        </p>
       </div>
 
       {data.stale && (
@@ -58,11 +50,7 @@ export default async function FlyersPage({ searchParams }: Props) {
         </p>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {data.flyers.map((f) => (
-          <StoreCard key={f.id} merchant={f.merchant} postalCode={pc} />
-        ))}
-      </div>
+      <StoreSelector flyers={data.flyers} postalCode={pc} />
     </div>
   );
 }
