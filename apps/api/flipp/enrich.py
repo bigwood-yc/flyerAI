@@ -159,7 +159,8 @@ class Enricher:
         prompt = _PROMPT + "\n".join(f"{i}. {n}" for i, n in enumerate(names))
         try:
             text = self.llm.complete(prompt)
-        except LLMError:
+        except LLMError as exc:
+            print(f"[enrich] LLM call failed: {exc}", flush=True)
             return {}
 
         out = {}
