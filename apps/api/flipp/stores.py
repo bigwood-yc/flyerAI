@@ -31,11 +31,11 @@ GROCERY_MERCHANTS = {
 }
 
 
-def _normalize(name: str) -> str:
+def normalize(name: str) -> str:
     """Lower-case and collapse whitespace so 'Cataldi   ' == 'cataldi'."""
     return " ".join((name or "").split()).lower()
 
 
 def is_grocery_merchant(merchant: str) -> bool:
     """True if the merchant is on our curated grocery allow-list."""
-    return _normalize(merchant) in GROCERY_MERCHANTS
+    return normalize(merchant) in GROCERY_MERCHANTS

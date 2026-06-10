@@ -25,10 +25,10 @@ class RecommendationEngine:
 
         # Apply store filter (normalised match to tolerate case/spacing differences)
         if store_filter is not None:
-            filter_set = {_stores_mod._normalize(s) for s in store_filter}
+            filter_set = {_stores_mod.normalize(s) for s in store_filter}
             flyers = [
                 f for f in flyers
-                if _stores_mod._normalize(f["merchant"]) in filter_set
+                if _stores_mod.normalize(f["merchant"]) in filter_set
             ]
 
         # Collect priced grocery items per category across all stores

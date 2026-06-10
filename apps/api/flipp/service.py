@@ -118,7 +118,7 @@ class FlyerRetrievalService:
         listing = self.get_grocery_flyers(postal_code)
         match = next(
             (f for f in listing["flyers"]
-             if stores._normalize(f["merchant"]) == stores._normalize(store)),
+             if stores.normalize(f["merchant"]) == stores.normalize(store)),
             None,
         )
         if match is None:

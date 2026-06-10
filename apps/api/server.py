@@ -128,7 +128,8 @@ def get_recommendations(
     t0 = time.monotonic()
     store_filter: list[str] | None = None
     if stores:
-        store_filter = [s.strip() for s in stores.split(",") if s.strip()]
+        parts = [s.strip() for s in stores.split(",") if s.strip()]
+        store_filter = parts if parts else None
     try:
         engine = RecommendationEngine(_make_service(), _make_enricher())
         result = engine.generate(postal_code, store_filter=store_filter)

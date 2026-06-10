@@ -154,3 +154,23 @@ def test_store_filter_empty_list_returns_empty_guide():
     result = engine.generate("L4C0E6", store_filter=[])
     assert result["weekly_guide"] == []
     assert result["shopping_route"] == []
+
+
+def test_store_filter_matches_case_insensitively():
+    """store_filter matching must be case-insensitive and whitespace-tolerant."""
+    flyers = [{"id": 1, "merchant": "No Frills"}, {"id": 2, "merchant": "FreshCo"}]
+    flyer_map = {
+        "No Frills": _flyer("No Frills", [_item("MILK", 2.0, "No Frills")]),
+        "FreshCo":   _flyer("FreshCo",   [_item("EGGS", 3.0, "FreshCo")]),
+    }
+    enr_map = {
+        "MILK": _enr("dairy", "牛奶"),
+        "EGGS": _enr("dairy", "鸡蛋"),
+    }
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    # Filter with different casing and extra whitespace — must still match
+    result = engine.generate("L4C0E6", store_filter=["  no frills  "])
+    dairy = next(g for g in result["weekly_guide"] if g["category"] == "dairy")
+    assert dairy["best_store"] == "No Frills"
+    # FreshCo must NOT appear
+    assert all(d["store"] == "No Frills" for d in dairy["deals"])
