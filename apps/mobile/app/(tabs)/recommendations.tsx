@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { usePostalCode } from "../../lib/PostalCodeContext";
 import { getRecommendations, type RecommendationsResponse } from "../../lib/api";
 import CategoryCard from "../../components/CategoryCard";
@@ -14,24 +14,31 @@ import CategoryCard from "../../components/CategoryCard";
 export default function RecommendationsScreen() {
   const { postalCode } = usePostalCode();
   const router = useRouter();
+  const { stores: storesParam } = useLocalSearchParams<{ stores?: string | string[] }>();
   const [data, setData] = useState<RecommendationsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+
+  const storeFilter: string[] | undefined = storesParam
+    ? (Array.isArray(storesParam) ? storesParam : storesParam.split(","))
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : undefined;
 
   useEffect(() => {
     if (!postalCode) return;
     let cancelled = false;
     setLoading(true);
     setError("");
-    getRecommendations(postalCode)
-      .then(d => { if (!cancelled) setData(d); })
+    getRecommendations(postalCode, storeFilter)
+      .then((d) => { if (!cancelled) setData(d); })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "加载失败，请重试");
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [postalCode, retryKey]);
+  }, [postalCode, storesParam, retryKey]);
 
   if (!postalCode) {
     return (
@@ -58,7 +65,7 @@ export default function RecommendationsScreen() {
         <Text className="text-red-500 text-center mb-4">{error}</Text>
         <TouchableOpacity
           className="bg-blue-500 rounded-lg px-6 py-3"
-          onPress={() => setRetryKey(k => k + 1)}
+          onPress={() => setRetryKey((k) => k + 1)}
         >
           <Text className="text-white font-bold">重新查找</Text>
         </TouchableOpacity>
@@ -83,9 +90,16 @@ export default function RecommendationsScreen() {
         keyExtractor={(item) => item.category}
         contentContainerStyle={{ padding: 16 }}
         ListHeaderComponent={
-          <Text className="text-base font-bold text-gray-900 mb-4">
-            本周推荐 · {postalCode}
-          </Text>
+          <View className="mb-4">
+            <Text className="text-base font-bold text-gray-900">
+              本周推荐 · {postalCode}
+            </Text>
+            {storeFilter && storeFilter.length > 0 && (
+              <Text className="text-xs text-blue-600 mt-1">
+                已筛选 {storeFilter.length} 家超市
+              </Text>
+            )}
+          </View>
         }
         renderItem={({ item }) => (
           <CategoryCard

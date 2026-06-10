@@ -6,6 +6,7 @@ import { supabase } from "./supabase";
 export interface FlyerInfo {
   id: number;
   merchant: string;
+  distance_km?: number | null;
 }
 
 export interface FlyersResponse {
@@ -106,9 +107,12 @@ export function getFlyer(
 }
 
 export function getRecommendations(
-  postalCode: string
+  postalCode: string,
+  stores?: string[]
 ): Promise<RecommendationsResponse> {
-  return fetchJson<RecommendationsResponse>(
-    `/api/recommendations?postal_code=${encodeURIComponent(postalCode)}`
-  );
+  let path = `/api/recommendations?postal_code=${encodeURIComponent(postalCode)}`;
+  if (stores && stores.length > 0) {
+    path += `&stores=${encodeURIComponent(stores.join(","))}`;
+  }
+  return fetchJson<RecommendationsResponse>(path);
 }
