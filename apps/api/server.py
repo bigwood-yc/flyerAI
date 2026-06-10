@@ -8,7 +8,10 @@ Docs: http://localhost:8000/docs
 import os
 import time
 
-from fastapi import FastAPI, HTTPException, Query, Depends
+from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from auth import get_current_user
@@ -34,6 +37,15 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def log_timing(request: Request, call_next):
+    t0 = time.monotonic()
+    response = await call_next(request)
+    ms = int((time.monotonic() - t0) * 1000)
+    print(f"  → {request.method} {request.url.path} {response.status_code}  took {ms}ms")
+    return response
 
 
 def _make_service() -> FlyerRetrievalService:
@@ -110,12 +122,16 @@ def get_flyer(
 @app.get("/api/recommendations")
 def get_recommendations(
     postal_code: str = Query(..., min_length=6),
+    stores: str | None = Query(None),   # comma-separated merchant names
     user_id: str = Depends(get_current_user),
 ):
     t0 = time.monotonic()
+    store_filter: list[str] | None = None
+    if stores:
+        store_filter = [s.strip() for s in stores.split(",") if s.strip()]
     try:
         engine = RecommendationEngine(_make_service(), _make_enricher())
-        result = engine.generate(postal_code)
+        result = engine.generate(postal_code, store_filter=store_filter)
     except FlippError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     log_search(

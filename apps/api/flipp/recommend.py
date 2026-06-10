@@ -7,6 +7,7 @@ Aggregates enriched flyer data across all available stores and produces:
 """
 
 from .enrich import CATEGORIES
+from . import stores as _stores_mod
 
 
 class RecommendationEngine:
@@ -14,9 +15,21 @@ class RecommendationEngine:
         self.service = service
         self.enricher = enricher
 
-    def generate(self, postal_code: str) -> dict:
+    def generate(
+        self,
+        postal_code: str,
+        store_filter: list[str] | None = None,
+    ) -> dict:
         listing = self.service.get_grocery_flyers(postal_code)
         flyers = listing.get("flyers", [])
+
+        # Apply store filter (normalised match to tolerate case/spacing differences)
+        if store_filter is not None:
+            filter_set = {_stores_mod._normalize(s) for s in store_filter}
+            flyers = [
+                f for f in flyers
+                if _stores_mod._normalize(f["merchant"]) in filter_set
+            ]
 
         # Collect priced grocery items per category across all stores
         # "other" is excluded: it maps to non-food items — those go in the is_grocery filter

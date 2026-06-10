@@ -113,3 +113,44 @@ def test_empty_flyers_returns_empty_guide():
     result = engine.generate("L3R0B1")
     assert result["weekly_guide"] == []
     assert result["shopping_route"] == []
+
+
+def test_store_filter_limits_to_selected_stores():
+    """With store_filter=["A"], only store A's items appear in the guide."""
+    flyers = [{"id": 1, "merchant": "A"}, {"id": 2, "merchant": "B"}]
+    flyer_map = {
+        "A": _flyer("A", [_item("SPINACH", 1.0, "A")]),
+        "B": _flyer("B", [_item("KALE", 0.5, "B")]),
+    }
+    enr_map = {
+        "SPINACH": _enr("produce", "菠菜"),
+        "KALE":    _enr("produce", "羽衣甘蓝"),
+    }
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L4C0E6", store_filter=["A"])
+
+    produce = next(g for g in result["weekly_guide"] if g["category"] == "produce")
+    # B has cheaper item but is filtered out; A's item must be the best_store
+    assert produce["best_store"] == "A"
+    assert all(d["store"] == "A" for d in produce["deals"])
+
+
+def test_store_filter_none_uses_all_stores():
+    """store_filter=None must behave identically to calling with no filter."""
+    flyers = [{"id": 1, "merchant": "A"}]
+    flyer_map = {"A": _flyer("A", [_item("MILK", 3.0, "A")])}
+    enr_map = {"MILK": _enr("dairy", "牛奶")}
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L4C0E6", store_filter=None)
+    assert len(result["weekly_guide"]) > 0
+
+
+def test_store_filter_empty_list_returns_empty_guide():
+    """Filtering to zero stores must return an empty weekly_guide."""
+    flyers = [{"id": 1, "merchant": "A"}]
+    flyer_map = {"A": _flyer("A", [_item("MILK", 3.0, "A")])}
+    enr_map = {"MILK": _enr("dairy", "牛奶")}
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), FakeEnricher(enr_map))
+    result = engine.generate("L4C0E6", store_filter=[])
+    assert result["weekly_guide"] == []
+    assert result["shopping_route"] == []
