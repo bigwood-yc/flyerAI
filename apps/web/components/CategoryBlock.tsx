@@ -24,7 +24,7 @@ export default function CategoryBlock({ guide }: Props) {
               <div className="text-xs text-gray-400 truncate">{deal.store}</div>
             </div>
             <div className="font-bold text-green-700 flex-shrink-0">
-              ${deal.price.toFixed(2)}
+              {deal.price != null ? `$${Number(deal.price).toFixed(2)}` : "—"}
             </div>
           </div>
         ))}

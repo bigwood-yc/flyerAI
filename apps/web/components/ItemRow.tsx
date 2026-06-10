@@ -13,7 +13,9 @@ export default function ItemRow({ item }: Props) {
         <div className="text-xs text-gray-400 truncate">{item.name}</div>
       </div>
       <div className="text-right flex-shrink-0">
-        <div className="font-bold text-green-700">${item.price.toFixed(2)}</div>
+        <div className="font-bold text-green-700">
+          {item.price != null ? `$${Number(item.price).toFixed(2)}` : "—"}
+        </div>
         <div className="text-xs text-gray-400">{item.category_zh}</div>
       </div>
     </div>

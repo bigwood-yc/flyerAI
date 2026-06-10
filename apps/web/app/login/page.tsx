@@ -1,58 +1,31 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
 
-type Step = "email" | "otp";
+type Step = "email" | "sent";
 
 export default function LoginPage() {
-  const router = useRouter();
   const supabase = createClient();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function sendOtp() {
+  async function sendMagicLink() {
     setLoading(true);
     setError("");
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { shouldCreateUser: true },
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
       if (error) { setError(error.message); return; }
-      setStep("otp");
+      setStep("sent");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "发送失败，请重试 / Send failed, please retry");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function verifyOtp() {
-    setLoading(true);
-    setError("");
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email,
-        token: otp,
-        type: "email",
-      });
-      if (error) { setError(error.message); return; }
-      if (!data.user) { setError("登录失败，请重试 / Login failed, please try again"); return; }
-
-      const { data: profile } = await supabase
-        .from("user_profiles")
-        .select("onboarding_done")
-        .eq("id", data.user.id)
-        .single();
-
-      router.push(profile?.onboarding_done ? "/" : "/onboarding");
-      router.refresh();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "登录失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -68,7 +41,7 @@ export default function LoginPage() {
           <p className="text-sm text-gray-500 mt-1">
             {step === "email"
               ? "输入邮箱登录 / Enter your email to sign in"
-              : `验证码已发送至 ${email} / Check your inbox`}
+              : `登录链接已发送至 ${email}`}
           </p>
         </div>
 
@@ -88,40 +61,27 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyDown={(e) => e.key === "Enter" && sendOtp()}
+              onKeyDown={(e) => e.key === "Enter" && sendMagicLink()}
               autoFocus
             />
             <button
-              onClick={sendOtp}
+              onClick={sendMagicLink}
               disabled={loading || !email.includes("@")}
               className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "发送中..." : "发送验证码 / Send code"}
+              {loading ? "发送中..." : "发送登录链接 / Send magic link"}
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            <label htmlFor="otp" className="sr-only">验证码</label>
-            <input
-              id="otp"
-              type="text"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-              placeholder="6 位验证码"
-              maxLength={6}
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-xl text-center tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyDown={(e) => e.key === "Enter" && otp.length === 6 && verifyOtp()}
-              autoFocus
-            />
+          <div className="space-y-4 text-center">
+            <div className="text-4xl" aria-hidden="true">📬</div>
+            <p className="text-sm text-gray-600">
+              点击邮件中的登录链接即可完成登录。
+              <br />
+              <span className="text-gray-400">Click the link in your email to sign in.</span>
+            </p>
             <button
-              onClick={verifyOtp}
-              disabled={loading || otp.length < 6}
-              className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "验证中..." : "登录 / Verify"}
-            </button>
-            <button
-              onClick={() => { setStep("email"); setOtp(""); setError(""); }}
+              onClick={() => { setStep("email"); setError(""); }}
               className="w-full text-gray-400 text-sm hover:text-gray-600"
             >
               ← 重新输入邮箱 / Back
