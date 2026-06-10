@@ -63,7 +63,9 @@ def test_get_flyers_missing_postal_code_returns_422():
 
 
 def test_get_flyer_ok_returns_enriched_items():
-    with patch("server._make_service") as ms, patch("server._make_enricher") as me:
+    with patch("server._make_service") as ms, patch("server._make_enricher") as me, \
+         patch("server._detail_cache") as mock_dc:
+        mock_dc.get.return_value = None   # force cache miss so the service is called
         ms.return_value.get_flyer.return_value = MOCK_FLYER_RESP
         me.return_value.enrich.return_value = MOCK_ENR
         resp = client.get("/api/flyer?store=Walmart&postal_code=L3R0B1")
@@ -72,11 +74,13 @@ def test_get_flyer_ok_returns_enriched_items():
     assert item["zh_name"] == "菠菜"
     assert item["emoji"] == "🥬"
     assert item["price"] == 2.5
-    assert item["price_text"] == "$2.50 / bag"   # 新增
+    assert item["price_text"] == "$2.50 / bag"
 
 
 def test_get_flyer_not_found_returns_404():
-    with patch("server._make_service") as ms, patch("server._make_enricher"):
+    with patch("server._make_service") as ms, patch("server._make_enricher"), \
+         patch("server._detail_cache") as mock_dc:
+        mock_dc.get.return_value = None
         ms.return_value.get_flyer.return_value = None
         resp = client.get("/api/flyer?store=Unknown&postal_code=L3R0B1")
     assert resp.status_code == 404
@@ -108,7 +112,9 @@ def test_get_flyers_service_error_returns_503():
 
 def test_get_flyer_service_error_returns_503():
     from flipp.client import FlippError
-    with patch("server._make_service") as ms, patch("server._make_enricher"):
+    with patch("server._make_service") as ms, patch("server._make_enricher"), \
+         patch("server._detail_cache") as mock_dc:
+        mock_dc.get.return_value = None
         ms.return_value.get_flyer.side_effect = FlippError("down")
         resp = client.get("/api/flyer?store=Walmart&postal_code=L3R0B1")
     assert resp.status_code == 503

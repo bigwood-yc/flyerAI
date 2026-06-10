@@ -120,11 +120,10 @@ def kick_geocoding(
     """
     Start a background daemon thread to geocode uncached merchants.
     Merchants already in cache (even failed ones) are skipped.
-    The thread opens its own SqliteCache connection to avoid thread-safety
-    issues with the caller's shared connection.
+    The passed cache is used directly — SqliteCache has a threading.Lock so
+    sharing it across threads is safe.
     """
     fsa = postal_code[:3].upper()
-    # Only geocode merchants not yet in cache at all
     to_geocode = [
         m for m in merchants
         if cache.get(_cache_key(m, fsa)) is None
@@ -132,17 +131,10 @@ def kick_geocoding(
     if not to_geocode:
         return
 
-    db_path: str = cache.path   # SqliteCache exposes .path
-
     def _worker() -> None:
-        from .cache import SqliteCache
-        thread_cache = SqliteCache(db_path, ttl=_GEOCODE_TTL)
-        try:
-            for merchant in to_geocode:
-                key = _cache_key(merchant, fsa)
-                coords = _nominatim_search(f"{merchant} grocery {fsa} Canada")
-                thread_cache.set(key, coords)
-        finally:
-            thread_cache.close()
+        for merchant in to_geocode:
+            key = _cache_key(merchant, fsa)
+            coords = _nominatim_search(f"{merchant} grocery {fsa} Canada")
+            cache.set(key, coords)
 
     threading.Thread(target=_worker, daemon=True).start()
