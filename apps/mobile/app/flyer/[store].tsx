@@ -56,8 +56,12 @@ export default function FlyerDetailScreen() {
   const filteredItems = useMemo<FlyerItem[]>(() => {
     if (!data) return [];
     const groceryItems = data.items.filter((i) => i.is_grocery);
-    if (activeCategory === "all") return groceryItems;
-    return groceryItems.filter((i) => i.category === activeCategory);
+    const categoryFiltered =
+      activeCategory === "all"
+        ? groceryItems
+        : groceryItems.filter((i) => i.category === activeCategory);
+    // Sort by price ascending within the active filter
+    return [...categoryFiltered].sort((a, b) => Number(a.price) - Number(b.price));
   }, [data, activeCategory]);
 
   if (loading) {
