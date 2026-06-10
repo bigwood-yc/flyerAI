@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { FlyerInfo } from "@/lib/api";
 
@@ -10,10 +10,18 @@ interface Props {
 }
 
 export default function StoreSelector({ flyers, postalCode }: Props) {
-  // Default: all stores selected
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(flyers.map((f) => f.merchant))
-  );
+  // Deduplicate by merchant name (API sorts by distance asc, first = closest)
+  const uniqueFlyers = useMemo<FlyerInfo[]>(() => {
+    const seen = new Set<string>();
+    return flyers.filter((f) => {
+      if (seen.has(f.merchant)) return false;
+      seen.add(f.merchant);
+      return true;
+    });
+  }, [flyers]);
+
+  // Default: nothing selected
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
   const toggleStore = (merchant: string) => {
     setSelected((prev) => {
@@ -27,10 +35,10 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
     });
   };
 
-  const allSelected = selected.size === flyers.length;
+  const allSelected = selected.size === uniqueFlyers.length;
   const toggleAll = () =>
     setSelected(
-      allSelected ? new Set() : new Set(flyers.map((f) => f.merchant))
+      allSelected ? new Set() : new Set(uniqueFlyers.map((f) => f.merchant))
     );
 
   // Build recommendations URL: omit stores param when all are selected
@@ -38,7 +46,7 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
   const recsHref =
     selectedArr.length === 0
       ? null
-      : selectedArr.length === flyers.length
+      : selectedArr.length === uniqueFlyers.length
       ? `/recommendations?postal_code=${postalCode}`
       : `/recommendations?postal_code=${postalCode}&stores=${encodeURIComponent(
           selectedArr.join(",")
@@ -70,7 +78,7 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
 
       {/* Store grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {flyers.map((f) => {
+        {uniqueFlyers.map((f) => {
           const isSelected = selected.has(f.merchant);
           return (
             <div
@@ -108,19 +116,22 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
                   <div className="font-semibold text-gray-900 truncate">
                     {f.merchant}
                   </div>
-                  <div className="flex items-center justify-between mt-1">
+                  <div className="flex items-center justify-between mt-1 gap-2">
                     <Link
                       href={`/flyers/${encodeURIComponent(f.merchant)}?postal_code=${postalCode}`}
-                      className="text-sm text-blue-600 hover:underline"
+                      className="text-sm text-blue-600 hover:underline flex-shrink-0"
                       onClick={(e) => e.stopPropagation()}
                     >
                       查看传单 →
                     </Link>
-                    {f.distance_km != null && (
-                      <span className="text-xs text-gray-400">
-                        📍 ~{Number(f.distance_km).toFixed(1)} km
-                      </span>
-                    )}
+                    <div className="text-xs text-gray-400 text-right min-w-0">
+                      {f.distance_km != null && (
+                        <span>📍 ~{Number(f.distance_km).toFixed(1)} km</span>
+                      )}
+                      {f.address && (
+                        <span className="block truncate">{f.address}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
