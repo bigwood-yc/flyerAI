@@ -172,7 +172,10 @@ def get_flyer(
         raise HTTPException(status_code=404, detail="No flyer found for this store")
 
     priced = [i for i in flyer["items"] if i["price"] not in (None, "")]
+    print(f"[enrich] store={store} items={len(priced)} api_key={'set' if os.environ.get('ANTHROPIC_API_KEY') else 'MISSING'}", flush=True)
     enr = enricher.enrich([it["name"] for it in priced])
+    enriched_count = sum(1 for v in enr.values() if v.get("enriched"))
+    print(f"[enrich] enriched={enriched_count}/{len(priced)} neutral={len(priced)-enriched_count}", flush=True)
     enriched_items = [
         {
             "name": it["name"],
