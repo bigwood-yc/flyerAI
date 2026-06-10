@@ -18,7 +18,7 @@ without touching the network.
 
 from . import stores
 from .client import FlippError
-from .geocode import postal_code_coords, store_coords_cached, haversine_km, kick_geocoding
+from .geocode import postal_code_coords, store_coords_cached, haversine_km, kick_geocoding, format_store_address
 
 
 def _normalize_pc(postal_code: str) -> str:
@@ -89,15 +89,17 @@ class FlyerRetrievalService:
 
         for f in flyer_list:
             dist: float | None = None
+            addr: str | None = None
             if user_coords:
                 sc = store_coords_cached(f["merchant"], fsa, self.cache)
                 if sc is not None:
                     dist = round(
                         haversine_km(user_coords[0], user_coords[1], sc[0], sc[1]), 1
                     )
+                    addr = format_store_address(sc)
                 else:
                     needs_geocoding.append(f["merchant"])
-            flyers_with_dist.append({**f, "distance_km": dist})
+            flyers_with_dist.append({**f, "distance_km": dist, "address": addr})
 
         # Background-geocode any uncached stores (fire-and-forget)
         if needs_geocoding:

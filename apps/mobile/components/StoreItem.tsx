@@ -3,6 +3,7 @@ import { TouchableOpacity, View, Text } from "react-native";
 interface Props {
   merchant: string;
   distanceKm?: number | null;
+  address?: string | null;
   selected: boolean;
   onToggleSelect: () => void;
   onNavigate: () => void;
@@ -11,6 +12,7 @@ interface Props {
 export default function StoreItem({
   merchant,
   distanceKm,
+  address,
   selected,
   onToggleSelect,
   onNavigate,
@@ -54,6 +56,12 @@ export default function StoreItem({
             {distanceKm != null && (
               <Text className="text-xs text-gray-400 mt-0.5">
                 📍 ~{Number(distanceKm).toFixed(1)} km
+                {address ? `  ${address}` : ""}
+              </Text>
+            )}
+            {distanceKm == null && address && (
+              <Text className="text-xs text-gray-400 mt-0.5" numberOfLines={1}>
+                {address}
               </Text>
             )}
           </View>

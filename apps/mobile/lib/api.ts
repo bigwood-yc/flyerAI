@@ -7,6 +7,7 @@ export interface FlyerInfo {
   id: number;
   merchant: string;
   distance_km?: number | null;
+  address?: string | null;
 }
 
 export interface FlyersResponse {

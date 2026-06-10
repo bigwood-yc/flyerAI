@@ -95,8 +95,8 @@ def store_coords_cached(
     return result[0]         # result[0]=coords (may be None), result[1]=is_stale
 
 
-def _nominatim_search(query: str) -> tuple[float, float] | None:
-    """Call OSM Nominatim; returns (lat, lon) or None. Holds _nominatim_sem."""
+def _nominatim_search(query: str) -> tuple | None:
+    """Call OSM Nominatim; returns (lat, lon, display_name) or None. Holds _nominatim_sem."""
     url = (
         _NOMINATIM_URL
         + "?q=" + urllib.parse.quote(query)
@@ -107,11 +107,53 @@ def _nominatim_search(query: str) -> tuple[float, float] | None:
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode())
-                result = (float(data[0]["lat"]), float(data[0]["lon"])) if data else None
+                if data:
+                    result = (
+                        float(data[0]["lat"]),
+                        float(data[0]["lon"]),
+                        data[0].get("display_name", ""),
+                    )
+                else:
+                    result = None
         except Exception:
             result = None
         time.sleep(_NOMINATIM_DELAY)   # rate limit enforced inside the semaphore
         return result
+
+
+_ADDR_SKIP = frozenset({
+    "canada", "ontario", "british columbia", "alberta", "quebec", "manitoba",
+    "saskatchewan", "nova scotia", "new brunswick", "prince edward island",
+    "newfoundland and labrador", "northwest territories", "nunavut", "yukon",
+})
+
+
+def format_store_address(sc: tuple | None) -> str | None:
+    """Extract a short 'Street, City' address from a cached geocode tuple.
+
+    Handles both legacy 2-tuples (lat, lon) and new 3-tuples (lat, lon, display_name).
+    """
+    if not sc or len(sc) < 3:
+        return None
+    display_name = sc[2] if isinstance(sc[2], str) else ""
+    if not display_name:
+        return None
+    parts = [p.strip() for p in display_name.split(",")]
+    kept = [
+        p for p in parts
+        if p
+        and p.lower() not in _ADDR_SKIP
+        and "region" not in p.lower()
+        and "municipality" not in p.lower()
+        and "district" not in p.lower()
+        and "county" not in p.lower()
+    ]
+    # Skip leading part if it has no digits (likely the store name, not a street address)
+    if kept and not any(c.isdigit() for c in kept[0]):
+        kept = kept[1:]
+    if len(kept) >= 2:
+        return f"{kept[0]}, {kept[1]}"
+    return kept[0] if kept else None
 
 
 def kick_geocoding(

@@ -28,9 +28,15 @@ export default function StoresScreen() {
     getFlyers(postalCode)
       .then((d) => {
         if (!cancelled) {
-          setData(d);
-          // Select all stores by default
-          setSelected(new Set(d.flyers.map((f) => f.merchant)));
+          // Deduplicate by merchant name (API sorts by distance asc, so first = closest)
+          const seen = new Set<string>();
+          const uniqueFlyers = d.flyers.filter((f) => {
+            if (seen.has(f.merchant)) return false;
+            seen.add(f.merchant);
+            return true;
+          });
+          setData({ ...d, flyers: uniqueFlyers });
+          setSelected(new Set()); // Default: nothing selected
         }
       })
       .catch((e: unknown) => {
@@ -150,6 +156,7 @@ export default function StoresScreen() {
           <StoreItem
             merchant={item.merchant}
             distanceKm={item.distance_km}
+            address={item.address}
             selected={selected.has(item.merchant)}
             onToggleSelect={() => toggleStore(item.merchant)}
             onNavigate={() =>
