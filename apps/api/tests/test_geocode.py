@@ -56,3 +56,9 @@ def test_cache_key_normalises_spaces_and_ampersand():
     assert k1 == k2
     assert "geo:" in k1
     assert "L4C" in k1
+
+
+def test_cache_key_normalises_apostrophe():
+    k1 = _cache_key("Tim Horton's", "L4C")
+    k2 = _cache_key("Tim Hortons", "L4C")
+    assert k1 == k2

@@ -23,6 +23,7 @@ The geo: cache entries use a 10-year TTL because store locations almost never ch
 
 import json
 import math
+import os
 import threading
 import time
 import urllib.parse
@@ -31,8 +32,10 @@ import urllib.request
 import pgeocode
 
 _NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-_NOMINATIM_UA = "GroceryFlyerAI/1.0 (contact: admin@example.com)"
+_NOMINATIM_UA = f"GroceryFlyerAI/1.0 (contact: {os.environ.get('ADMIN_EMAIL', 'zhou.yuchen1990@gmail.com')})"
 _NOMINATIM_DELAY = 1.1   # seconds between requests (OSM policy: 1/sec)
+_nominatim_sem = threading.Semaphore(1)  # global rate limiter: 1 concurrent Nominatim call
+_GEOCODE_TTL = 10 * 365 * 24 * 60 * 60   # 10 years; store locations rarely change
 
 _nomi_ca = None
 _nomi_lock = threading.Lock()
@@ -93,21 +96,22 @@ def store_coords_cached(
 
 
 def _nominatim_search(query: str) -> tuple[float, float] | None:
-    """Call OSM Nominatim; returns (lat, lon) or None. One call only."""
+    """Call OSM Nominatim; returns (lat, lon) or None. Holds _nominatim_sem."""
     url = (
         _NOMINATIM_URL
         + "?q=" + urllib.parse.quote(query)
         + "&format=json&limit=1&countrycodes=ca"
     )
     req = urllib.request.Request(url, headers={"User-Agent": _NOMINATIM_UA})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-            if data:
-                return float(data[0]["lat"]), float(data[0]["lon"])
-    except Exception:
-        pass
-    return None
+    with _nominatim_sem:
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+                result = (float(data[0]["lat"]), float(data[0]["lon"])) if data else None
+        except Exception:
+            result = None
+        time.sleep(_NOMINATIM_DELAY)   # rate limit enforced inside the semaphore
+        return result
 
 
 def kick_geocoding(
@@ -132,14 +136,12 @@ def kick_geocoding(
 
     def _worker() -> None:
         from .cache import SqliteCache
-        _GEOCODE_TTL = 10 * 365 * 24 * 60 * 60   # 10 years
         thread_cache = SqliteCache(db_path, ttl=_GEOCODE_TTL)
         try:
             for merchant in to_geocode:
                 key = _cache_key(merchant, fsa)
                 coords = _nominatim_search(f"{merchant} grocery {fsa} Canada")
                 thread_cache.set(key, coords)
-                time.sleep(_NOMINATIM_DELAY)
         finally:
             thread_cache.close()
 
