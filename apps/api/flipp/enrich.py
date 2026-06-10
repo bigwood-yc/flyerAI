@@ -17,6 +17,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # A translation is stable, so the enrichment cache effectively never expires.
 STABLE_TTL = 10 * 365 * 24 * 60 * 60
@@ -104,7 +105,7 @@ def _parse_json_array(text: str):
 def _neutral_record(name: str) -> dict:
     emoji, zh = _NEUTRAL
     return {
-        "category": "unknown",
+        "category": "pantry",
         "emoji": emoji,
         "category_zh": zh,
         "zh_name": name,
@@ -135,15 +136,21 @@ class Enricher:
             else:
                 todo.append(name)
 
-        for i in range(0, len(todo), self.batch_size):
-            batch = todo[i:i + self.batch_size]
-            enriched = self._call(batch)
-            for name in batch:
-                if name in enriched:
-                    self.cache.set(f"zh:{name}", enriched[name])
-                    result[name] = enriched[name]
-                else:
-                    result[name] = _neutral_record(name)  # not cached
+        batches = [todo[i:i + self.batch_size] for i in range(0, len(todo), self.batch_size)]
+        # Fire all Claude API calls concurrently (network I/O bound).
+        # Cache writes happen in the main thread after futures complete — safe.
+        max_workers = min(4, len(batches)) if batches else 1
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(self._call, batch): batch for batch in batches}
+            for fut in as_completed(futures):
+                batch = futures[fut]
+                enriched = fut.result()
+                for name in batch:
+                    if name in enriched:
+                        self.cache.set(f"zh:{name}", enriched[name])
+                        result[name] = enriched[name]
+                    else:
+                        result[name] = _neutral_record(name)  # not cached
         return result
 
     def _call(self, names) -> dict:

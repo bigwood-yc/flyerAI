@@ -10,6 +10,7 @@ Standard library only (sqlite3 is built in).
 
 import json
 import sqlite3
+import threading
 import time
 
 DEFAULT_TTL = 24 * 60 * 60  # 24 hours, in seconds
@@ -19,7 +20,11 @@ class SqliteCache:
     def __init__(self, path: str = "flipp_cache.db", ttl: int = DEFAULT_TTL):
         self.path = path
         self.ttl = ttl
-        self._conn = sqlite3.connect(path)
+        self._lock = threading.Lock()
+        self._conn = sqlite3.connect(path, check_same_thread=False)
+        # WAL mode allows concurrent reads while a write is in progress.
+        # Falls back silently on :memory: databases (used in tests).
+        self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(
             "CREATE TABLE IF NOT EXISTS cache ("
             "  key TEXT PRIMARY KEY,"
@@ -30,11 +35,12 @@ class SqliteCache:
         self._conn.commit()
 
     def set(self, key: str, value) -> None:
-        self._conn.execute(
-            "INSERT OR REPLACE INTO cache(key, payload, fetched_at) VALUES (?, ?, ?)",
-            (key, json.dumps(value), time.time()),
-        )
-        self._conn.commit()
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR REPLACE INTO cache(key, payload, fetched_at) VALUES (?, ?, ?)",
+                (key, json.dumps(value), time.time()),
+            )
+            self._conn.commit()
 
     def get(self, key: str):
         """
@@ -42,9 +48,10 @@ class SqliteCache:
         is_stale is True when the entry is older than the TTL but still usable
         as a fallback when a refresh fails.
         """
-        row = self._conn.execute(
-            "SELECT payload, fetched_at FROM cache WHERE key = ?", (key,)
-        ).fetchone()
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT payload, fetched_at FROM cache WHERE key = ?", (key,)
+            ).fetchone()
         if row is None:
             return None
         payload, fetched_at = row

@@ -117,7 +117,9 @@ def test_get_flyer_service_error_returns_503():
 def test_get_recommendations_service_error_returns_503():
     from flipp.client import FlippError
     with patch("server._make_service"), patch("server._make_enricher"), \
-         patch("server.RecommendationEngine") as MockEng:
+         patch("server.RecommendationEngine") as MockEng, \
+         patch("server._rec_cache") as mock_cache:
+        mock_cache.get.return_value = None   # force cache miss so the engine is called
         MockEng.return_value.generate.side_effect = FlippError("down")
         resp = client.get("/api/recommendations?postal_code=L3R0B1")
     assert resp.status_code == 503

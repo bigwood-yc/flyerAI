@@ -6,7 +6,10 @@ Docs: http://localhost:8000/docs
 """
 
 import os
+import sqlite3
+import threading
 import time
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -28,7 +31,55 @@ _DB = os.environ.get(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "flipp_cache.db")
 )
 
-app = FastAPI(title="Grocery Flyer AI API", version="1.0")
+# Recommendation results are deterministic per (postal_code + store_filter) and
+# change at most once a week. Cache them for 6 hours so repeated calls are <5ms.
+_REC_TTL = 6 * 60 * 60
+_rec_cache = SqliteCache(_DB, ttl=_REC_TTL)
+
+
+def _warm_cache() -> None:
+    """
+    Background thread: pre-compute recommendations for every postal code that
+    already has flyer data in the DB. Runs once at startup; re-warms stale entries.
+    Each iteration is fully self-contained so a failure for one postal code does
+    not affect the others.
+    """
+    try:
+        conn = sqlite3.connect(_DB)
+        rows = conn.execute(
+            "SELECT key FROM cache WHERE key LIKE 'flyers:%'"
+        ).fetchall()
+        conn.close()
+        postal_codes = [r[0].split(":", 1)[1] for r in rows]
+    except Exception:
+        return
+
+    if not postal_codes:
+        return
+
+    svc = _make_service()
+    enricher = _make_enricher()
+    engine = RecommendationEngine(svc, enricher)
+
+    for pc in postal_codes:
+        try:
+            rec_key = f"rec:{pc}:"
+            cached = _rec_cache.get(rec_key)
+            if cached is not None and not cached[1]:
+                continue  # still fresh — skip
+            result = engine.generate(pc)
+            _rec_cache.set(rec_key, result)
+        except Exception:
+            pass
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    threading.Thread(target=_warm_cache, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Grocery Flyer AI API", version="1.0", lifespan=lifespan)
 
 _extra_origins = [o for o in [os.environ.get("WEB_ORIGIN")] if o]
 app.add_middleware(
@@ -130,11 +181,29 @@ def get_recommendations(
     if stores:
         parts = [s.strip() for s in stores.split(",") if s.strip()]
         store_filter = parts if parts else None
+
+    pc = postal_code.replace(" ", "").upper()
+    store_key = ",".join(sorted(store_filter)) if store_filter else ""
+    rec_key = f"rec:{pc}:{store_key}"
+
+    cached = _rec_cache.get(rec_key)
+    if cached is not None and not cached[1]:
+        log_search(
+            user_id=user_id,
+            postal_code=postal_code,
+            query_type="recommendations",
+            flyer_category="groceries",
+            response_ms=int((time.monotonic() - t0) * 1000),
+        )
+        return cached[0]
+
     try:
         engine = RecommendationEngine(_make_service(), _make_enricher())
         result = engine.generate(postal_code, store_filter=store_filter)
     except FlippError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
+
+    _rec_cache.set(rec_key, result)
     log_search(
         user_id=user_id,
         postal_code=postal_code,
