@@ -1,11 +1,38 @@
 import Link from "next/link";
-import ItemRow from "@/components/ItemRow";
-import { getFlyer } from "@/lib/api";
+import CategoryItemGroup from "@/components/CategoryItemGroup";
+import { getFlyer, type FlyerItem } from "@/lib/api";
 import { createClient } from "@/lib/supabase/server";
 
 interface Props {
   params: Promise<{ store: string }>;
   searchParams: Promise<{ postal_code?: string }>;
+}
+
+interface CategoryGroup {
+  emoji: string;
+  label: string;
+  items: FlyerItem[];
+}
+
+/** Group grocery items by category, sort each group by price ascending. */
+function groupByCategory(items: FlyerItem[]): CategoryGroup[] {
+  const map = new Map<string, CategoryGroup>();
+  for (const item of items) {
+    if (!item.is_grocery) continue;
+    const key = item.category;
+    if (!map.has(key)) {
+      map.set(key, { emoji: item.emoji, label: item.category_zh, items: [] });
+    }
+    map.get(key)!.items.push(item);
+  }
+  // Sort items within each group by price ascending
+  for (const group of map.values()) {
+    group.items.sort((a, b) => Number(a.price) - Number(b.price));
+  }
+  // Return groups sorted by category label so the order is stable
+  return Array.from(map.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, "zh")
+  );
 }
 
 export default async function StoreFlyerPage({ params, searchParams }: Props) {
@@ -40,11 +67,12 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
     );
   }
 
-  const groceries = data.items.filter((i) => i.is_grocery);
-  const filtered = data.items.length - groceries.length;
+  const groups = groupByCategory(data.items);
+  const totalGroceries = groups.reduce((sum, g) => sum + g.items.length, 0);
+  const filtered = data.items.length - totalGroceries;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <Link
         href={`/flyers?postal_code=${pc}`}
         className="text-blue-600 text-sm inline-block"
@@ -55,7 +83,7 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
       <div>
         <h2 className="text-xl font-bold">{data.store}</h2>
         <p className="text-sm text-gray-500">
-          共 {groceries.length} 个特价商品 / {groceries.length} priced items
+          共 {totalGroceries} 个特价商品 / {totalGroceries} priced items
         </p>
       </div>
 
@@ -65,13 +93,20 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
         </p>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 px-4">
-        {groceries.length === 0 ? (
-          <p className="py-8 text-center text-gray-400">暂无商品数据 / No items available</p>
-        ) : (
-          groceries.map((item, i) => <ItemRow key={i} item={item} />)
-        )}
-      </div>
+      {groups.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 px-4 py-8 text-center text-gray-400">
+          暂无商品数据 / No items available
+        </div>
+      ) : (
+        groups.map((group) => (
+          <CategoryItemGroup
+            key={group.label}
+            emoji={group.emoji}
+            label={group.label}
+            items={group.items}
+          />
+        ))
+      )}
 
       {filtered > 0 && (
         <p className="text-sm text-gray-400 text-center">

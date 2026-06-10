@@ -15,6 +15,7 @@ export interface FlyersResponse {
 export interface FlyerItem {
   name: string;
   price: number;
+  price_text?: string;
   category: string;
   emoji: string;
   category_zh: string;
