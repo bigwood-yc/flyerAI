@@ -26,3 +26,7 @@ def test_matching_is_whitespace_and_case_insensitive():
 def test_empty_or_none_is_not_grocery():
     assert not stores.is_grocery_merchant("")
     assert not stores.is_grocery_merchant(None)
+
+
+def test_longos_in_allow_list():
+    assert stores.is_grocery_merchant("Longos")

@@ -28,6 +28,7 @@ GROCERY_MERCHANTS = {
     "bestco foodmart",
     "blue sky supermarket",
     "nations fresh foods",
+    "longos",
 }
 
 
