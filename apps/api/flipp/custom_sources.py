@@ -10,7 +10,7 @@
   3. 结果缓存 4 天（传单每周更新，4 天确保及时刷新）
 """
 
-import json
+from .enrich import _parse_json_array
 
 # FreshPro Richmond Hill 店元数据
 FRESHPRO_RH = {
@@ -40,41 +40,42 @@ _EXTRACT_PROMPT = (
 
 class FreshProScraper:
     CACHE_KEY = "freshpro:rh:items"
-    CACHE_TTL = 4 * 24 * 3600  # 4 days
 
     def __init__(self, llm_client, cache):
+        """
+        llm_client: must have available() -> bool and complete_vision(prompt, urls) -> str.
+        cache: SqliteCache instance; must be constructed with ttl=4*24*3600 (4 days) by caller.
+        """
         self.llm = llm_client
         self.cache = cache
 
     def fetch_items(self) -> list[dict]:
         """
         返回 FreshPro 本周特价列表。每个元素：{name, price, price_text}。
-        结果缓存 4 天；LLM 不可用时返回空列表。
+        结果缓存 4 天（由调用方在 SqliteCache 构造时设置 TTL）。
+        缓存过期时若 LLM 提取失败，返回旧缓存数据；无缓存时返回空列表。
         """
         cached = self.cache.get(self.CACHE_KEY)
-        if cached is not None and not cached[1]:
+        stale_value = cached[0] if cached is not None else None
+        if cached is not None and not cached[1]:   # fresh
             return cached[0]
         items = self._extract_from_flyer()
         if items:
             self.cache.set(self.CACHE_KEY, items)
-        return items
+            return items
+        # LLM failed — serve stale data if available
+        return stale_value if stale_value is not None else []
 
     def _extract_from_flyer(self) -> list[dict]:
         if not (hasattr(self.llm, "available") and self.llm.available()):
             return []
         try:
             raw = self.llm.complete_vision(_EXTRACT_PROMPT, FRESHPRO_RH["flyer_urls"])
-        except Exception:
-            return []
-        start, end = raw.find("["), raw.rfind("]")
-        if start == -1 or end < start:
-            return []
-        try:
-            items = json.loads(raw[start : end + 1])
-        except json.JSONDecodeError:
+        except Exception as exc:
+            print(f"[freshpro] vision extraction failed: {exc}", flush=True)
             return []
         result = []
-        for it in items:
+        for it in _parse_json_array(raw):
             if not isinstance(it, dict):
                 continue
             name = (it.get("name") or "").strip()

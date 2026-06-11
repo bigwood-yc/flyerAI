@@ -77,3 +77,40 @@ def test_freshpro_rh_metadata():
     lat, lon = FRESHPRO_RH["coords"]
     assert 43.0 < lat < 44.5   # Richmond Hill, ON
     assert -80.0 < lon < -79.0
+
+
+def test_fetch_items_returns_empty_when_llm_unavailable():
+    """available() returns False → fetch_items returns []."""
+    class UnavailableLLM:
+        def available(self): return False
+        def complete_vision(self, prompt, urls): raise AssertionError("should not be called")
+    scraper = FreshProScraper(UnavailableLLM(), FakeCache())
+    assert scraper.fetch_items() == []
+
+
+def test_fetch_items_returns_empty_on_malformed_response():
+    """LLM returns text with no JSON array → fetch_items returns []."""
+    class BadResponseLLM:
+        def available(self): return True
+        def complete_vision(self, prompt, urls): return "Sorry, I cannot parse this image."
+    scraper = FreshProScraper(BadResponseLLM(), FakeCache())
+    assert scraper.fetch_items() == []
+
+
+def test_fetch_items_returns_stale_on_llm_failure():
+    """When cache is stale and LLM fails, return stale data instead of empty."""
+    stale_items = [{"name": "APPLE", "price": 1.99, "price_text": "$1.99"}]
+
+    class StaleCache:
+        def __init__(self):
+            self.store = {"freshpro:rh:items": stale_items}
+        def get(self, key):
+            if key in self.store:
+                return (self.store[key], True)   # is_stale=True
+            return None
+        def set(self, key, value):
+            self.store[key] = value
+
+    scraper = FreshProScraper(FakeVisionLLM(fail=True), StaleCache())
+    result = scraper.fetch_items()
+    assert result == stale_items
