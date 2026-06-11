@@ -91,7 +91,7 @@ def test_graceful_fallback_when_unavailable():
 def test_fallback_is_not_cached_so_it_retries():
     cache = FakeCache()
     Enricher(FakeLLM(fail=True), cache).enrich(["ITEM"])   # API fails -> fallback
-    assert "zh:ITEM" not in cache.store                    # nothing cached
+    assert "zh2:ITEM" not in cache.store                    # nothing cached
     # Now the model works; the name should be enriched (not stuck on fallback).
     rec = Enricher(FakeLLM({"ITEM": ("dairy", "牛奶", True)}), cache).enrich(["ITEM"])["ITEM"]
     assert rec["enriched"] is True
