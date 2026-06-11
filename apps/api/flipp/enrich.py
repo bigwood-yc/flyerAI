@@ -97,24 +97,28 @@ class AnthropicClient:
             b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
         )
 
-    @staticmethod
-    def _fetch_image_b64(url: str) -> tuple[str, str]:
+    def _fetch_image_b64(self, url: str) -> tuple[str, str]:
         """下载图片，返回 (base64_data, media_type)。"""
         req = urllib.request.Request(
             url, headers={"User-Agent": "Mozilla/5.0"}
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = resp.read()
-            media_type = resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
-        return base64.b64encode(data).decode("utf-8"), media_type
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                data = resp.read()
+                media_type = resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip() or "image/jpeg"
+            return base64.b64encode(data).decode("utf-8"), media_type
+        except (urllib.error.URLError, TimeoutError) as e:
+            raise LLMError(f"Failed to fetch image {url}: {e}")
 
     def complete_vision(self, prompt: str, image_urls: list[str]) -> str:
         """
         向 Claude 发送图片 + 文字 prompt，返回文字回复。
-        image_urls: 公开可访问的图片 URL 列表（JPEG/PNG/GIF/WEBP）。
+        image_urls: 公开可访问的图片 URL 列表（JPEG/PNG/GIF/WEBP），不能为空。
         """
         if not self.api_key:
             raise LLMError("ANTHROPIC_API_KEY is not set")
+        if not image_urls:
+            raise LLMError("image_urls cannot be empty")
         content: list[dict] = []
         for url in image_urls:
             b64, mt = self._fetch_image_b64(url)
@@ -125,7 +129,7 @@ class AnthropicClient:
         content.append({"type": "text", "text": prompt})
         body = json.dumps({
             "model": self.model,
-            "max_tokens": 4000,
+            "max_tokens": self.max_tokens,
             "messages": [{"role": "user", "content": content}],
         }).encode("utf-8")
         req = urllib.request.Request(self.URL, data=body, headers={
