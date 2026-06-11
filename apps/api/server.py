@@ -23,7 +23,7 @@ from activity_log import log_search
 from flipp.client import FlippClient, FlippError
 from flipp.cache import SqliteCache
 from flipp.service import FlyerRetrievalService
-from flipp.custom_sources import FreshProScraper
+from flipp.custom_sources import FreshProScraper, FRESHPRO_STORES
 from flipp.enrich import AnthropicClient, Enricher, STABLE_TTL
 from flipp.recommend import RecommendationEngine
 
@@ -113,8 +113,11 @@ async def log_timing(request: Request, call_next):
 
 
 def _make_service() -> FlyerRetrievalService:
-    scraper = FreshProScraper(AnthropicClient(), _FRESHPRO_CACHE)
-    return FlyerRetrievalService(FlippClient(), _FLYER_CACHE, freshpro=scraper)
+    freshpro_scrapers = [
+        FreshProScraper(store_meta, AnthropicClient(), _FRESHPRO_CACHE)
+        for store_meta in FRESHPRO_STORES
+    ]
+    return FlyerRetrievalService(FlippClient(), _FLYER_CACHE, freshpro_scrapers=freshpro_scrapers)
 
 
 def _make_enricher() -> Enricher:

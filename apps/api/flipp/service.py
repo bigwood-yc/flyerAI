@@ -1,5 +1,5 @@
 """
-Flyer Retrieval Service (Task 3.2).
+Flyer Retrieval Service.
 
 Input:  postal code (and optionally a single store)
 Output: current grocery flyers / a store's current flyer with priced items
@@ -19,7 +19,7 @@ without touching the network.
 from . import stores
 from .client import FlippError
 from .geocode import postal_code_coords, store_coords_cached, haversine_km, kick_geocoding, format_store_address
-from .custom_sources import FreshProScraper, FRESHPRO_RH
+from .custom_sources import FreshProScraper, FRESHPRO_STORES
 
 
 def _normalize_pc(postal_code: str) -> str:
@@ -42,10 +42,22 @@ def _clean_item(raw: dict, merchant: str, flyer_id) -> dict:
 
 
 class FlyerRetrievalService:
-    def __init__(self, client, cache, freshpro: "FreshProScraper | None" = None):
+    def __init__(self, client, cache, freshpro_scrapers: "list[FreshProScraper] | None" = None):
         self.client = client
         self.cache = cache
-        self._freshpro = freshpro
+        self._freshpro_scrapers = freshpro_scrapers or []
+
+    def _nearest_freshpro(self, user_coords) -> "FreshProScraper | None":
+        """Return the FreshPro scraper whose store is closest to user_coords.
+        Falls back to the first scraper when user_coords is unavailable."""
+        if not self._freshpro_scrapers:
+            return None
+        if user_coords is None:
+            return self._freshpro_scrapers[0]
+        def dist(scraper):
+            lat, lon = scraper.store["coords"]
+            return haversine_km(user_coords[0], user_coords[1], lat, lon)
+        return min(self._freshpro_scrapers, key=dist)
 
     def _cached_or_refresh(self, key, refresh_fn):
         """
@@ -112,19 +124,19 @@ class FlyerRetrievalService:
         unknown = [f for f in flyers_with_dist if f["distance_km"] is None]
         sorted_flyers = [f for _, _, f in sorted(known, key=lambda x: x[0])] + unknown
 
-        # Inject custom sources (e.g. FreshPro) with hardcoded coords — only when within range
-        if self._freshpro is not None:
+        # Inject nearest FreshPro location (only when within 100 km or coords unknown)
+        nearest_fp = self._nearest_freshpro(user_coords)
+        if nearest_fp is not None:
             fp_dist: float | None = None
             if user_coords:
-                fp_lat, fp_lon = FRESHPRO_RH["coords"]
+                fp_lat, fp_lon = nearest_fp.store["coords"]
                 fp_dist = round(haversine_km(user_coords[0], user_coords[1], fp_lat, fp_lon), 1)
-            # Only show FreshPro to nearby users (or when distance is unknown)
             if fp_dist is None or fp_dist <= 100:
                 sorted_flyers.append({
-                    "id": FRESHPRO_RH["flyer_id"],
-                    "merchant": FRESHPRO_RH["name"],
+                    "id": nearest_fp.store["flyer_id"],
+                    "merchant": nearest_fp.store["name"],
                     "distance_km": fp_dist,
-                    "address": FRESHPRO_RH["address"],
+                    "address": nearest_fp.store["address"],
                 })
 
         return {"postal_code": pc, "stale": stale, "flyers": sorted_flyers}
@@ -134,15 +146,23 @@ class FlyerRetrievalService:
         The current grocery flyer for one store, with its priced items.
         Returns None if that store has no grocery flyer for this postal code.
         """
-        # Custom sources bypass Flipp — route directly to the scraper
-        if self._freshpro is not None and stores.normalize(store) == stores.normalize(FRESHPRO_RH["name"]):
-            items = self._freshpro.fetch_items()
-            return {
-                "store": FRESHPRO_RH["name"],
-                "flyer_id": FRESHPRO_RH["flyer_id"],
-                "stale": False,   # FreshPro manages its own staleness internally
-                "items": items,
-            }
+        # FreshPro: geocode user location, pick nearest store, bypass Flipp
+        if self._freshpro_scrapers and stores.normalize(store) == stores.normalize("FreshPro Foodmart"):
+            pc = _normalize_pc(postal_code)
+            user_coords: tuple[float, float] | None = None
+            try:
+                user_coords = postal_code_coords(pc)
+            except Exception:
+                pass
+            nearest_fp = self._nearest_freshpro(user_coords)
+            if nearest_fp is not None:
+                items = nearest_fp.fetch_items()
+                return {
+                    "store": nearest_fp.store["name"],
+                    "flyer_id": nearest_fp.store["flyer_id"],
+                    "stale": False,   # FreshPro manages its own staleness internally
+                    "items": items,
+                }
 
         listing = self.get_grocery_flyers(postal_code)
         match = next(
