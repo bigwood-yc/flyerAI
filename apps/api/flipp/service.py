@@ -138,7 +138,7 @@ class FlyerRetrievalService:
             return {
                 "store": FRESHPRO_RH["name"],
                 "flyer_id": FRESHPRO_RH["flyer_id"],
-                "stale": False,
+                "stale": False,   # FreshPro manages its own staleness internally
                 "items": items,
             }
 
