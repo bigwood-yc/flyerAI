@@ -14,6 +14,10 @@ interface CategoryGroup {
   items: FlyerItem[];
 }
 
+const CATEGORY_ORDER: Record<string, number> = {
+  produce: 0, meat: 1, seafood: 2, dairy: 3, bakery: 4, frozen: 5, pantry: 6, other: 7,
+};
+
 /** Group grocery items by category, sort each group by price ascending. */
 function groupByCategory(items: FlyerItem[]): CategoryGroup[] {
   const map = new Map<string, CategoryGroup>();
@@ -25,14 +29,12 @@ function groupByCategory(items: FlyerItem[]): CategoryGroup[] {
     }
     map.get(key)!.items.push(item);
   }
-  // Sort items within each group by price ascending
   for (const group of map.values()) {
     group.items.sort((a, b) => Number(a.price) - Number(b.price));
   }
-  // Return groups sorted by category label so the order is stable
-  return Array.from(map.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, "zh")
-  );
+  return Array.from(map.entries())
+    .sort(([catA], [catB]) => (CATEGORY_ORDER[catA] ?? 99) - (CATEGORY_ORDER[catB] ?? 99))
+    .map(([, group]) => group);
 }
 
 export default async function StoreFlyerPage({ params, searchParams }: Props) {
