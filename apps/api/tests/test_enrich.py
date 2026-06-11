@@ -140,3 +140,11 @@ def test_enriched_result_written_to_zh2_cache():
     Enricher(FakeLLM(mapping), cache).enrich(["DRAGON FRUIT"])
     assert cache.store["zh2:DRAGON FRUIT"]["zh_name"] == "火龙果"
     assert all(not k.startswith("zh:") for k in cache.store)
+
+
+def test_anthropic_client_has_complete_vision():
+    """AnthropicClient 必须有 complete_vision 方法（只测接口，不发真实请求）。"""
+    from flipp.enrich import AnthropicClient
+    client = AnthropicClient()
+    assert hasattr(client, "complete_vision")
+    assert callable(client.complete_vision)

@@ -12,6 +12,7 @@ is still no runtime dependency. The API key is read from the ANTHROPIC_API_KEY
 environment variable; it is never written to code or passed on the command line.
 """
 
+import base64
 import json
 import os
 import re
@@ -92,6 +93,51 @@ class AnthropicClient:
                 data = json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
             raise LLMError(f"Anthropic API call failed: {e}")
+        return "".join(
+            b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
+        )
+
+    @staticmethod
+    def _fetch_image_b64(url: str) -> tuple[str, str]:
+        """下载图片，返回 (base64_data, media_type)。"""
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = resp.read()
+            media_type = resp.headers.get("Content-Type", "image/jpeg").split(";")[0].strip()
+        return base64.b64encode(data).decode("utf-8"), media_type
+
+    def complete_vision(self, prompt: str, image_urls: list[str]) -> str:
+        """
+        向 Claude 发送图片 + 文字 prompt，返回文字回复。
+        image_urls: 公开可访问的图片 URL 列表（JPEG/PNG/GIF/WEBP）。
+        """
+        if not self.api_key:
+            raise LLMError("ANTHROPIC_API_KEY is not set")
+        content: list[dict] = []
+        for url in image_urls:
+            b64, mt = self._fetch_image_b64(url)
+            content.append({
+                "type": "image",
+                "source": {"type": "base64", "media_type": mt, "data": b64},
+            })
+        content.append({"type": "text", "text": prompt})
+        body = json.dumps({
+            "model": self.model,
+            "max_tokens": 4000,
+            "messages": [{"role": "user", "content": content}],
+        }).encode("utf-8")
+        req = urllib.request.Request(self.URL, data=body, headers={
+            "x-api-key": self.api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        })
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
+            raise LLMError(f"Anthropic vision API call failed: {e}")
         return "".join(
             b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"
         )
