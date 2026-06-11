@@ -19,6 +19,7 @@ without touching the network.
 from . import stores
 from .client import FlippError
 from .geocode import postal_code_coords, store_coords_cached, haversine_km, kick_geocoding, format_store_address
+from .custom_sources import FreshProScraper, FRESHPRO_RH
 
 
 def _normalize_pc(postal_code: str) -> str:
@@ -41,9 +42,10 @@ def _clean_item(raw: dict, merchant: str, flyer_id) -> dict:
 
 
 class FlyerRetrievalService:
-    def __init__(self, client, cache):
+    def __init__(self, client, cache, freshpro: "FreshProScraper | None" = None):
         self.client = client
         self.cache = cache
+        self._freshpro = freshpro
 
     def _cached_or_refresh(self, key, refresh_fn):
         """
@@ -110,6 +112,19 @@ class FlyerRetrievalService:
         unknown = [f for f in flyers_with_dist if f["distance_km"] is None]
         sorted_flyers = [f for _, _, f in sorted(known, key=lambda x: x[0])] + unknown
 
+        # Inject custom sources (e.g. FreshPro) with hardcoded coords
+        if self._freshpro is not None:
+            fp_dist: float | None = None
+            if user_coords:
+                fp_lat, fp_lon = FRESHPRO_RH["coords"]
+                fp_dist = round(haversine_km(user_coords[0], user_coords[1], fp_lat, fp_lon), 1)
+            sorted_flyers.append({
+                "id": FRESHPRO_RH["flyer_id"],
+                "merchant": FRESHPRO_RH["name"],
+                "distance_km": fp_dist,
+                "address": FRESHPRO_RH["address"],
+            })
+
         return {"postal_code": pc, "stale": stale, "flyers": sorted_flyers}
 
     def get_flyer(self, store: str, postal_code: str):
@@ -117,6 +132,16 @@ class FlyerRetrievalService:
         The current grocery flyer for one store, with its priced items.
         Returns None if that store has no grocery flyer for this postal code.
         """
+        # Custom sources bypass Flipp — route directly to the scraper
+        if self._freshpro is not None and stores.normalize(store) == stores.normalize(FRESHPRO_RH["name"]):
+            items = self._freshpro.fetch_items()
+            return {
+                "store": FRESHPRO_RH["name"],
+                "flyer_id": FRESHPRO_RH["flyer_id"],
+                "stale": False,
+                "items": items,
+            }
+
         listing = self.get_grocery_flyers(postal_code)
         match = next(
             (f for f in listing["flyers"]

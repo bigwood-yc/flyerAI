@@ -38,6 +38,7 @@ _FLYER_CACHE = SqliteCache(_DB)
 _ENRICH_CACHE = SqliteCache(_DB, ttl=STABLE_TTL)
 _rec_cache = SqliteCache(_DB, ttl=_CACHE_TTL)
 _detail_cache = SqliteCache(_DB, ttl=_CACHE_TTL)
+_FRESHPRO_CACHE = SqliteCache(_DB, ttl=4 * 24 * 3600)   # FreshPro flyer: 4-day TTL
 
 
 def _warm_cache() -> None:
@@ -111,7 +112,9 @@ async def log_timing(request: Request, call_next):
 
 
 def _make_service() -> FlyerRetrievalService:
-    return FlyerRetrievalService(FlippClient(), _FLYER_CACHE)
+    from flipp.custom_sources import FreshProScraper
+    scraper = FreshProScraper(AnthropicClient(), _FRESHPRO_CACHE)
+    return FlyerRetrievalService(FlippClient(), _FLYER_CACHE, freshpro=scraper)
 
 
 def _make_enricher() -> Enricher:

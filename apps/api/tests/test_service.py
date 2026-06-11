@@ -153,3 +153,46 @@ def test_get_grocery_flyers_includes_distance_km_field():
     for f in result["flyers"]:
         assert "distance_km" in f
         assert f["distance_km"] is None or isinstance(f["distance_km"], float)
+
+
+from flipp.custom_sources import FRESHPRO_RH
+
+
+class _FakeClient:
+    def __init__(self):
+        self._flyers = []
+        self._items = []
+    def fetch_flyers(self, pc): return self._flyers
+    def fetch_items(self, fid): return self._items
+
+
+class _FakeCache:
+    def __init__(self): self.store = {}
+    def get(self, key): return (self.store[key], False) if key in self.store else None
+    def set(self, key, value): self.store[key] = value
+
+
+class _FakeFreshProScraper:
+    def __init__(self, items=None):
+        self._items = items or [{"name": "DRAGON FRUIT", "price": 1.99, "price_text": "$1.99 ea"}]
+    def fetch_items(self): return self._items
+
+
+def _make_svc(scraper):
+    svc = FlyerRetrievalService(_FakeClient(), _FakeCache(), freshpro=scraper)
+    return svc
+
+
+def test_flyers_list_includes_freshpro():
+    result = _make_svc(_FakeFreshProScraper()).get_grocery_flyers("L3R0B1")
+    merchants = [f["merchant"] for f in result["flyers"]]
+    assert "FreshPro Foodmart" in merchants
+
+
+def test_get_flyer_for_freshpro_returns_items():
+    scraper = _FakeFreshProScraper([{"name": "DRAGON FRUIT", "price": 1.99, "price_text": "$1.99 ea"}])
+    flyer = _make_svc(scraper).get_flyer("FreshPro Foodmart", "L3R0B1")
+    assert flyer is not None
+    assert flyer["store"] == "FreshPro Foodmart"
+    assert len(flyer["items"]) == 1
+    assert flyer["items"][0]["name"] == "DRAGON FRUIT"
