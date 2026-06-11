@@ -111,3 +111,32 @@ def test_batching_makes_multiple_calls():
     out = enr.enrich(names)
     assert set(out) == {"A", "B", "C"}
     assert llm.calls == 2                 # ceil(3 / 2)
+
+
+def test_no_name_brand_stripped_from_zh_name():
+    """LLM 在 zh_name 中返回 NO NAME 前缀，应被自动去除。"""
+    mapping = {
+        "NO NAME WHITE VINEGAR 4L": ("pantry", "NO NAME 白醋 4升", True),
+    }
+    enr = Enricher(FakeLLM(mapping), FakeCache())
+    rec = enr.enrich(["NO NAME WHITE VINEGAR 4L"])["NO NAME WHITE VINEGAR 4L"]
+    assert rec["zh_name"] == "白醋 4升"
+    assert rec["enriched"] is True
+
+
+def test_cache_key_is_zh2():
+    """Enrichment 必须写入 zh2: key（不是 zh:），以便旧的错误翻译可被跳过。"""
+    llm = FakeLLM({"APPLE": ("produce", "苹果", True)})
+    cache = FakeCache()
+    Enricher(llm, cache).enrich(["APPLE"])
+    assert "zh2:APPLE" in cache.store
+    assert "zh:APPLE" not in cache.store
+
+
+def test_enriched_result_written_to_zh2_cache():
+    """成功翻译的条目写入 zh2: key，不写 zh:（确保旧 key 的缓存不被读取）。"""
+    mapping = {"DRAGON FRUIT": ("produce", "火龙果", True)}
+    cache = FakeCache()
+    Enricher(FakeLLM(mapping), cache).enrich(["DRAGON FRUIT"])
+    assert cache.store["zh2:DRAGON FRUIT"]["zh_name"] == "火龙果"
+    assert all(not k.startswith("zh:") for k in cache.store)

@@ -45,8 +45,14 @@ _PROMPT = (
     "  - category: one of produce, meat, seafood, dairy, bakery, frozen, pantry, other\n"
     "  - is_grocery: false for non-food items (health & beauty, household, pet, "
     "electronics, etc.), true otherwise\n"
-    "  - zh_name: a concise Simplified Chinese name. Keep brand names in their "
-    "original form or transliterate them; include the size/weight if present.\n"
+    "  - zh_name: a concise Simplified Chinese name. Rules:\n"
+    "    • Translate ALL produce names to Chinese, including tropical/exotic fruits "
+    "(Dragon Fruit→火龙果, Papaya→木瓜, Lychee→荔枝, Jackfruit→菠萝蜜, Guava→番石榴, "
+    "Durian→榴莲, Passion Fruit→百香果, Mango→芒果, Starfruit→杨桃).\n"
+    "    • For items prefixed with 'NO NAME', omit the prefix entirely and "
+    "translate only the product name (e.g., 'NO NAME White Vinegar 4L' → '白醋 4升').\n"
+    "    • Keep all other brand names in their original form or transliterate them.\n"
+    "    • Include the size/weight if present.\n"
     "Respond with ONLY a JSON array, no prose and no markdown code fences.\n\n"
     "Items:\n"
 )
@@ -130,7 +136,7 @@ class Enricher:
         """
         result, todo = {}, []
         for name in names:
-            cached = self.cache.get(f"zh:{name}")
+            cached = self.cache.get(f"zh2:{name}")
             if cached is not None:
                 result[name] = cached[0]
             else:
@@ -147,7 +153,7 @@ class Enricher:
                 enriched = fut.result()
                 for name in batch:
                     if name in enriched:
-                        self.cache.set(f"zh:{name}", enriched[name])
+                        self.cache.set(f"zh2:{name}", enriched[name])
                         result[name] = enriched[name]
                     else:
                         result[name] = _neutral_record(name)  # not cached
@@ -175,11 +181,16 @@ class Enricher:
                 cat = "other"
             emoji, zh = CATEGORIES[cat]
             name = names[idx]
+            zh_name = obj.get("zh_name") or name
+            # Strip "NO NAME" prefix regardless of LLM case variations
+            zh_name = re.sub(r"^no\s+name\s+", "", zh_name, flags=re.IGNORECASE).strip()
+            if not zh_name:
+                zh_name = name
             out[name] = {
                 "category": cat,
                 "emoji": emoji,
                 "category_zh": zh,
-                "zh_name": obj.get("zh_name") or name,
+                "zh_name": zh_name,
                 "is_grocery": bool(obj.get("is_grocery", True)),
                 "enriched": True,
             }
