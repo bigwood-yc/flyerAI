@@ -112,18 +112,20 @@ class FlyerRetrievalService:
         unknown = [f for f in flyers_with_dist if f["distance_km"] is None]
         sorted_flyers = [f for _, _, f in sorted(known, key=lambda x: x[0])] + unknown
 
-        # Inject custom sources (e.g. FreshPro) with hardcoded coords
+        # Inject custom sources (e.g. FreshPro) with hardcoded coords — only when within range
         if self._freshpro is not None:
             fp_dist: float | None = None
             if user_coords:
                 fp_lat, fp_lon = FRESHPRO_RH["coords"]
                 fp_dist = round(haversine_km(user_coords[0], user_coords[1], fp_lat, fp_lon), 1)
-            sorted_flyers.append({
-                "id": FRESHPRO_RH["flyer_id"],
-                "merchant": FRESHPRO_RH["name"],
-                "distance_km": fp_dist,
-                "address": FRESHPRO_RH["address"],
-            })
+            # Only show FreshPro to nearby users (or when distance is unknown)
+            if fp_dist is None or fp_dist <= 100:
+                sorted_flyers.append({
+                    "id": FRESHPRO_RH["flyer_id"],
+                    "merchant": FRESHPRO_RH["name"],
+                    "distance_km": fp_dist,
+                    "address": FRESHPRO_RH["address"],
+                })
 
         return {"postal_code": pc, "stale": stale, "flyers": sorted_flyers}
 

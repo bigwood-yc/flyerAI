@@ -138,7 +138,7 @@ class AnthropicClient:
             "content-type": "application/json",
         })
         try:
-            with urllib.request.urlopen(req, timeout=90) as resp:
+            with urllib.request.urlopen(req, timeout=max(self.timeout, 90)) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as e:
             raise LLMError(f"Anthropic vision API call failed: {e}")
