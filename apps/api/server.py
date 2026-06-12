@@ -149,6 +149,28 @@ def _make_enricher() -> Enricher:
     return Enricher(AnthropicClient(), _ENRICH_CACHE)
 
 
+# ── Per-user rate limiting ────────────────────────────────────────────────────
+# A simple in-memory sliding window guards the LLM-backed endpoints so a single
+# user hitting many uncached areas cannot run up Anthropic costs. Generous enough
+# that normal browsing never trips it (configurable via RATE_LIMIT_PER_MIN).
+_RATE_LIMIT = int(os.environ.get("RATE_LIMIT_PER_MIN", "60"))
+_RATE_WINDOW = 60.0
+_rate_buckets: dict[str, list[float]] = {}
+_rate_lock = threading.Lock()
+
+
+def _check_rate_limit(user_id: str) -> None:
+    now = time.monotonic()
+    cutoff = now - _RATE_WINDOW
+    with _rate_lock:
+        bucket = _rate_buckets.setdefault(user_id, [])
+        # Drop timestamps outside the window
+        del bucket[: next((i for i, t in enumerate(bucket) if t >= cutoff), len(bucket))]
+        if len(bucket) >= _RATE_LIMIT:
+            raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
+        bucket.append(now)
+
+
 @app.get("/api/flyers")
 def get_flyers(
     postal_code: str = Query(..., min_length=6),
@@ -176,6 +198,7 @@ def get_flyer(
     postal_code: str = Query(..., min_length=6),
     user_id: str = Depends(get_current_user),
 ):
+    _check_rate_limit(user_id)
     t0 = time.monotonic()
     pc = postal_code.replace(" ", "").upper()
     # Flyer content is FSA-wide (same items across the 6-digit codes in an area)
@@ -236,6 +259,7 @@ def get_recommendations(
     stores: str | None = Query(None),   # comma-separated merchant names
     user_id: str = Depends(get_current_user),
 ):
+    _check_rate_limit(user_id)
     t0 = time.monotonic()
     store_filter: list[str] | None = None
     if stores:

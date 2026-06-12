@@ -19,6 +19,7 @@ def bypass_auth_and_logging():
     log_search is a plain call so patch() is sufficient.
     """
     import server as _server
+    _server._rate_buckets.clear()   # isolate per-user rate-limit state between tests
     key = _server.get_current_user
     app.dependency_overrides[key] = lambda: "test-user-id"
     with patch("server.log_search"):
@@ -125,6 +126,21 @@ def test_get_flyer_service_error_returns_503():
         ms.return_value.get_flyer.side_effect = FlippError("down")
         resp = client.get("/api/flyer?store=Walmart&postal_code=L3R0B1")
     assert resp.status_code == 503
+
+
+def test_recommendations_rate_limited_after_threshold():
+    """The (n+1)th request within the window returns 429 for the same user."""
+    with patch("server._make_service"), patch("server._make_enricher"), \
+         patch("server.RecommendationEngine") as MockEng, \
+         patch("server._rec_cache") as mock_cache, \
+         patch("server._RATE_LIMIT", 3):
+        mock_cache.get.return_value = None
+        MockEng.return_value.generate.return_value = MOCK_RECO
+        statuses = [
+            client.get("/api/recommendations?postal_code=L3R0B1").status_code
+            for _ in range(4)
+        ]
+    assert statuses == [200, 200, 200, 429]
 
 
 def test_get_recommendations_service_error_returns_503():
