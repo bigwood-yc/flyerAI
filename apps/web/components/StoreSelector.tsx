@@ -121,23 +121,26 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-title font-semibold text-ink truncate">{f.merchant}</div>
-                  <div className="flex items-center justify-between mt-1 gap-2">
+                  {(f.distance_km != null || f.address) && (
+                    <div className="text-caption text-ink-soft mt-0.5 truncate">
+                      {f.distance_km != null && (
+                        <span>📍 ~{Number(f.distance_km).toFixed(1)} km</span>
+                      )}
+                      {f.distance_km != null && f.address && <span> · </span>}
+                      {f.address && <span>{f.address}</span>}
+                    </div>
+                  )}
+                  <div className="mt-1.5">
                     <button
                       onClick={(e) => navigateToFlyer(e, f.merchant)}
                       disabled={isPending}
-                      className="text-body text-brand hover:underline flex-shrink-0 disabled:opacity-50 flex items-center gap-1 min-h-[44px]"
+                      className="text-body text-brand hover:underline disabled:opacity-50 inline-flex items-center gap-1 min-h-[44px]"
                     >
                       {isThisLoading && (
                         <span className="inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                       )}
                       查看传单 →
                     </button>
-                    <div className="text-caption text-ink-soft text-right min-w-0">
-                      {f.distance_km != null && (
-                        <span>📍 ~{Number(f.distance_km).toFixed(1)} km</span>
-                      )}
-                      {f.address && <span className="block truncate">{f.address}</span>}
-                    </div>
                   </div>
                 </div>
               </div>

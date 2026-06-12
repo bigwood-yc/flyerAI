@@ -54,7 +54,7 @@ export default function StoreItem({
             {distanceKm != null && (
               <Text className="text-caption text-ink-soft mt-0.5" numberOfLines={1}>
                 📍 ~{Number(distanceKm).toFixed(1)} km
-                {address ? `  ${address}` : ""}
+                {address ? ` · ${address}` : ""}
               </Text>
             )}
             {distanceKm == null && address && (
