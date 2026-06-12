@@ -54,11 +54,16 @@ _EXTRACT_PROMPT = (
     "This is a Canadian grocery store weekly flyer image (FreshPro Foodmart, {address}). "
     "Extract every product that has a visible price. "
     "Return a JSON array where each element is:\n"
-    '  {{"name": "product name in English as shown", "price": 1.99, "price_text": "$1.99 ea"}}\n'
+    '  {{"name": "product name in English as shown", "price": 1.99, "price_text": "$1.99/lb"}}\n'
     "Rules:\n"
     "  - price must be a numeric float (e.g. 2.99, not '$2.99')\n"
     "  - if price is shown as 'X for $Y', set price to Y/X rounded to 2 decimals\n"
     "  - include size/weight in the name if shown (e.g. 'PORK BELLY 3KG')\n"
+    "  - price_text: reproduce the price as printed, and include a unit ONLY if the flyer "
+    "actually shows one next to that price. Use '$X.XX/lb' or '$X.XX/kg' ONLY for items "
+    "priced by weight on the flyer (typically produce, meat, seafood). For packaged or "
+    "each-priced items, use just '$X.XX' with no unit. Never invent '/lb' — if no unit is "
+    "printed, do not add one.\n"
     "  - skip any item without a clearly visible price\n"
     "Respond with ONLY the JSON array, no prose, no markdown code fences."
 )
