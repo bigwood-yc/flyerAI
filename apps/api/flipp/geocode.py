@@ -40,6 +40,15 @@ _GEOCODE_TTL = 10 * 365 * 24 * 60 * 60   # 10 years; store locations rarely chan
 _nomi_ca = None
 _nomi_lock = threading.Lock()
 
+# Flipp merchant string -> the spelling OSM/Nominatim actually indexes it under.
+# Keyed by the normalised Flipp name (lower-cased, whitespace-collapsed). Only the
+# handful of names that don't match OSM verbatim need an entry; everything else
+# searches under its own name.
+_OSM_QUERY_ALIAS = {
+    "longos": "Longo's",
+    "bestco foodmart": "Bestco Food Mart",
+}
+
 
 def postal_code_coords(postal_code: str) -> tuple[float, float] | None:
     """Return (lat, lon) for the FSA (first 3 chars), or None on failure."""
@@ -81,7 +90,7 @@ def _cache_key(merchant: str, fsa: str) -> str:
     old cached failures must not be reused.
     """
     normalised = merchant.lower().replace(" ", "").replace("&", "").replace("'", "")
-    return f"geo4:{normalised}:{fsa.upper()}"
+    return f"geo5:{normalised}:{fsa.upper()}"
 
 
 def store_coords_cached(
@@ -105,20 +114,29 @@ def _nominatim_search(
 ) -> tuple | None:
     """Call OSM Nominatim; returns (lat, lon, display_name) or None. Holds _nominatim_sem.
 
-    A free-text query that bakes the FSA into the string (e.g. "No Frills grocery
-    L4C Canada") matches nothing, so we search the bare merchant name constrained
-    to a ``viewbox`` around the user's FSA centroid. Nominatim orders results by
-    prominence, not distance, so when ``center`` is given we pull many candidates
-    and keep the one geographically nearest to it (the prominent-but-far store
-    would otherwise win).
+    We search the bare merchant name (a query that bakes the FSA into the string
+    matches nothing) and, since Nominatim orders by prominence rather than
+    distance, pull many candidates and keep the one nearest ``center``.
+
+    ``viewbox`` is passed as a SOFT bias only (not ``bounded=1``): a hard bound
+    drops every chain whose closest branch sits just outside the box — e.g. the
+    nearest Real Canadian Superstore to L4C is 12 km away, so a ~11 km bounded box
+    returned nothing and the store was cached as a permanent failure. Without the
+    bound, far-but-real branches are still returned and the nearest-pick keeps the
+    result correct for nearby branches.
+
+    Some Flipp merchant strings don't match OSM's spelling (Flipp "Longos" vs OSM
+    "Longo's"; Flipp "Bestco Foodmart" vs OSM "Bestco Food Mart"), so we map those
+    to the OSM form via ``_OSM_QUERY_ALIAS`` before querying.
     """
+    query = _OSM_QUERY_ALIAS.get(" ".join(merchant.split()).lower(), merchant)
     url = (
         _NOMINATIM_URL
-        + "?q=" + urllib.parse.quote(merchant)
+        + "?q=" + urllib.parse.quote(query)
         + "&format=json&limit=40&countrycodes=ca"
     )
     if viewbox:
-        url += "&viewbox=" + viewbox + "&bounded=1"
+        url += "&viewbox=" + viewbox   # soft ranking bias only — deliberately NOT bounded
     req = urllib.request.Request(url, headers={"User-Agent": _NOMINATIM_UA})
     with _nominatim_sem:
         try:
@@ -241,7 +259,7 @@ def kick_geocoding(
         if center is None:
             return  # cannot bound the search; leave uncached so a later request retries
         lat, lon = center
-        d = 0.1  # ~11 km half-box: keeps candidates local so the nearest store wins
+        d = 0.1  # ~11 km soft-bias box: ranks nearby branches first without excluding
         viewbox = f"{lon - d},{lat + d},{lon + d},{lat - d}"
         for merchant in to_geocode:
             coords = _nominatim_search(merchant, viewbox, center=center)

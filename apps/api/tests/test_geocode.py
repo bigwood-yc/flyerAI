@@ -1,8 +1,17 @@
 """Geocoding utilities — no network calls (haversine + cache only)."""
 
 import math
+import urllib.parse
+from unittest.mock import patch
+
 import pytest
-from flipp.geocode import haversine_km, store_coords_cached, _cache_key, cached_user_coords
+from flipp.geocode import (
+    haversine_km,
+    store_coords_cached,
+    _cache_key,
+    cached_user_coords,
+    _nominatim_search,
+)
 
 
 class FakeCache:
@@ -54,7 +63,7 @@ def test_cache_key_normalises_spaces_and_ampersand():
     k1 = _cache_key("T&T Supermarket", "L4C")
     k2 = _cache_key("t&t supermarket", "l4c")
     assert k1 == k2
-    assert "geo4:" in k1
+    assert "geo5:" in k1
     assert "L4C" in k1
 
 
@@ -69,3 +78,37 @@ def test_cache_key_normalises_apostrophe():
     k1 = _cache_key("Tim Horton's", "L4C")
     k2 = _cache_key("Tim Hortons", "L4C")
     assert k1 == k2
+
+
+class _FakeResp:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def read(self):
+        return self._payload.encode()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_nominatim_query_uses_osm_alias_and_no_hard_bound():
+    # Flipp's "Longos" must be searched as OSM's "Longo's", and the viewbox must be a
+    # soft bias (NOT bounded=1 — a hard bound dropped every chain whose nearest branch
+    # sits just outside the box, e.g. Real Canadian Superstore at 12 km).
+    captured = {}
+    payload = '[{"lat": "43.8935", "lon": "-79.4610", "display_name": "Longo\'s, Leyburn Ave"}]'
+
+    def fake_urlopen(req, timeout=10):
+        captured["url"] = req.full_url
+        return _FakeResp(payload)
+
+    with patch("flipp.geocode.urllib.request.urlopen", fake_urlopen), \
+         patch("flipp.geocode.time.sleep", lambda *_: None):
+        result = _nominatim_search("Longos", viewbox="0,1,1,0", center=(43.9, -79.46))
+
+    assert urllib.parse.quote("Longo's") in captured["url"]
+    assert "bounded=1" not in captured["url"]
+    assert result == (43.8935, -79.4610, "Longo's, Leyburn Ave")
