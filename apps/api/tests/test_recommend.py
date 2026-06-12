@@ -174,3 +174,28 @@ def test_store_filter_matches_case_insensitively():
     assert dairy["best_store"] == "No Frills"
     # FreshCo must NOT appear
     assert all(d["store"] == "No Frills" for d in dairy["deals"])
+
+
+def test_weekly_guide_sorted_by_category_priority():
+    """weekly_guide must appear in CATEGORY_PRIORITY order: meat before produce."""
+    flyers = [{"merchant": "S", "id": 1, "distance_km": None, "address": None,
+               "flyer_id": "s:1"}]
+    items = [
+        _item("Apples", 1.99, "S"),
+        _item("Chicken", 2.99, "S"),
+        _item("Salmon", 4.99, "S"),
+        _item("Milk", 3.49, "S"),
+    ]
+    enrichment = {
+        "Apples":  _enr("produce",  "苹果"),
+        "Chicken": _enr("meat",     "鸡肉"),
+        "Salmon":  _enr("seafood",  "三文鱼"),
+        "Milk":    _enr("dairy",    "牛奶"),
+    }
+    svc = FakeSvc(flyers, {"S": _flyer("S", items)})
+    eng = RecommendationEngine(svc, FakeEnricher(enrichment))
+    result = eng.generate("M5A1A1")
+    cats = [g["category"] for g in result["weekly_guide"]]
+    assert cats.index("meat") < cats.index("produce")
+    assert cats.index("seafood") < cats.index("produce")
+    assert cats.index("dairy") > cats.index("seafood")

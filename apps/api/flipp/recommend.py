@@ -10,6 +10,18 @@ from .enrich import CATEGORIES
 from . import stores as _stores_mod
 
 
+_CATEGORY_PRIORITY: dict[str, int] = {
+    "meat":    0,
+    "seafood": 1,
+    "produce": 2,
+    "dairy":   3,
+    "bakery":  4,
+    "frozen":  5,
+    "pantry":  6,
+    "other":   7,
+}
+
+
 class RecommendationEngine:
     def __init__(self, service, enricher):
         self.service = service
@@ -88,6 +100,8 @@ class RecommendationEngine:
         shopping_route = sorted(
             store_wins, key=lambda s: store_wins[s], reverse=True
         )
+
+        weekly_guide.sort(key=lambda g: _CATEGORY_PRIORITY.get(g["category"], 99))
 
         return {
             "postal_code": postal_code,
