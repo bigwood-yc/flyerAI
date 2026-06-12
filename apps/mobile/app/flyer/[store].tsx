@@ -12,14 +12,14 @@ import { getFlyer, type FlyerItem, type FlyerResponse } from "../../lib/api";
 import FlyerItemRow from "../../components/FlyerItemRow";
 
 const CATEGORY_CHIPS = [
-  { key: "all", label: "全部" },
-  { key: "produce", label: "🥦 蔬果" },
-  { key: "meat", label: "🥩 肉类" },
+  { key: "all",     label: "全部" },
+  { key: "meat",    label: "🥩 肉类" },
   { key: "seafood", label: "🐟 海鲜" },
-  { key: "dairy", label: "🥛 奶制品" },
-  { key: "bakery", label: "🥖 烘焙" },
-  { key: "frozen", label: "🧊 冷冻" },
-  { key: "pantry", label: "🥫 干货" },
+  { key: "produce", label: "🥦 蔬果" },
+  { key: "dairy",   label: "🥛 奶制品" },
+  { key: "bakery",  label: "🥖 烘焙" },
+  { key: "frozen",  label: "🧊 冷冻" },
+  { key: "pantry",  label: "🥫 干货" },
 ];
 
 export default function FlyerDetailScreen() {
