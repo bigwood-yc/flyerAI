@@ -15,7 +15,7 @@ interface CategoryGroup {
 }
 
 const CATEGORY_ORDER: Record<string, number> = {
-  produce: 0, meat: 1, seafood: 2, dairy: 3, bakery: 4, frozen: 5, pantry: 6, other: 7,
+  meat: 0, seafood: 1, produce: 2, dairy: 3, bakery: 4, frozen: 5, pantry: 6, other: 7,
 };
 
 /** Group grocery items by category, sort each group by price ascending. */
