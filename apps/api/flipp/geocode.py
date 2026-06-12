@@ -81,7 +81,7 @@ def _cache_key(merchant: str, fsa: str) -> str:
     old cached failures must not be reused.
     """
     normalised = merchant.lower().replace(" ", "").replace("&", "").replace("'", "")
-    return f"geo3:{normalised}:{fsa.upper()}"
+    return f"geo4:{normalised}:{fsa.upper()}"
 
 
 def store_coords_cached(
@@ -175,35 +175,76 @@ def format_store_address(sc: tuple | None) -> str | None:
     return kept[0] if kept else None
 
 
+def _geocode_full_postal(postal_code: str) -> tuple | None:
+    """Precise (lat, lon) for a full 6-char Canadian postal code via Nominatim, or None.
+
+    pgeocode only resolves the 3-char FSA centroid, which can sit several km from the
+    actual address; Nominatim resolves the full code (e.g. 'L4C 0E6') precisely.
+    """
+    pc = postal_code.replace(" ", "").upper()
+    spaced = f"{pc[:3]} {pc[3:]}" if len(pc) >= 6 else pc
+    url = (
+        _NOMINATIM_URL + "?q=" + urllib.parse.quote(spaced)
+        + "&format=json&limit=1&countrycodes=ca"
+    )
+    req = urllib.request.Request(url, headers={"User-Agent": _NOMINATIM_UA})
+    with _nominatim_sem:
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+        except Exception:
+            data = None
+        time.sleep(_NOMINATIM_DELAY)
+    if not data:
+        return None
+    return (float(data[0]["lat"]), float(data[0]["lon"]))
+
+
+def cached_user_coords(postal_code: str, cache) -> tuple[float, float] | None:
+    """The user's location for distance math, WITHOUT a network call.
+
+    Returns the precise full-postal-code coordinates once kick_geocoding has cached
+    them; until then falls back to the offline FSA centroid so the first response is
+    still instant (distances refine to precise on a later request).
+    """
+    pc = postal_code.replace(" ", "").upper()
+    hit = cache.get(f"pcgeo:{pc}")
+    if hit is not None and hit[0] is not None:
+        return hit[0]
+    return postal_code_coords(pc)
+
+
 def kick_geocoding(
     merchants: list[str], postal_code: str, cache
 ) -> None:
     """
-    Start a background daemon thread to geocode uncached merchants.
-    Merchants already in cache (even failed ones) are skipped.
-    The passed cache is used directly — SqliteCache has a threading.Lock so
-    sharing it across threads is safe.
+    Start a background daemon thread that, for this full postal code, (1) geocodes the
+    precise user location and (2) geocodes each uncached merchant relative to it.
+    Everything is keyed by the full postal code so distances and the chosen branch are
+    measured from the user's actual address, not the FSA centre. Already-cached entries
+    (even failed ones) are skipped. SqliteCache has a lock, so sharing it is safe.
     """
-    fsa = postal_code[:3].upper()
-    to_geocode = [
-        m for m in merchants
-        if cache.get(_cache_key(m, fsa)) is None
-    ]
-    if not to_geocode:
+    pc = postal_code.replace(" ", "").upper()
+    need_user = cache.get(f"pcgeo:{pc}") is None
+    to_geocode = [m for m in merchants if cache.get(_cache_key(m, pc)) is None]
+    if not to_geocode and not need_user:
         return
 
     def _worker() -> None:
-        # Bound the search to a ~±0.25° box (≈25 km) around the FSA centroid so we
-        # find the brand's nearby store rather than a random one country-wide.
-        centroid = postal_code_coords(fsa)
-        if centroid is None:
+        # 1. Resolve (and cache) the precise user location; fall back to FSA centroid.
+        hit = cache.get(f"pcgeo:{pc}")
+        if hit is None:
+            center = _geocode_full_postal(pc) or postal_code_coords(pc)
+            cache.set(f"pcgeo:{pc}", center)
+        else:
+            center = hit[0]
+        if center is None:
             return  # cannot bound the search; leave uncached so a later request retries
-        lat, lon = centroid
+        lat, lon = center
         d = 0.1  # ~11 km half-box: keeps candidates local so the nearest store wins
         viewbox = f"{lon - d},{lat + d},{lon + d},{lat - d}"
         for merchant in to_geocode:
-            key = _cache_key(merchant, fsa)
-            coords = _nominatim_search(merchant, viewbox, center=centroid)
-            cache.set(key, coords)
+            coords = _nominatim_search(merchant, viewbox, center=center)
+            cache.set(_cache_key(merchant, pc), coords)
 
     threading.Thread(target=_worker, daemon=True).start()

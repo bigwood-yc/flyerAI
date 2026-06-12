@@ -18,7 +18,7 @@ without touching the network.
 
 from . import stores
 from .client import FlippError
-from .geocode import postal_code_coords, store_coords_cached, haversine_km, kick_geocoding, format_store_address
+from .geocode import postal_code_coords, store_coords_cached, haversine_km, kick_geocoding, format_store_address, cached_user_coords
 from .custom_sources import FreshProScraper, FRESHPRO_STORES
 
 
@@ -90,14 +90,14 @@ class FlyerRetrievalService:
 
         flyer_list, stale = self._cached_or_refresh(f"flyers:{pc}", refresh)
 
-        # Attach distances from geocode cache (non-blocking)
+        # Attach distances from geocode cache (non-blocking). Uses the precise
+        # full-postal-code location once cached, otherwise the FSA centroid for now.
         user_coords: tuple[float, float] | None = None
         try:
-            user_coords = postal_code_coords(pc)
+            user_coords = cached_user_coords(pc, self.cache)
         except Exception:
             pass
 
-        fsa = pc[:3]
         flyers_with_dist = []
         needs_geocoding: list[str] = []
 
@@ -105,7 +105,7 @@ class FlyerRetrievalService:
             dist: float | None = None
             addr: str | None = None
             if user_coords:
-                sc = store_coords_cached(f["merchant"], fsa, self.cache)
+                sc = store_coords_cached(f["merchant"], pc, self.cache)
                 if sc is not None:
                     dist = round(
                         haversine_km(user_coords[0], user_coords[1], sc[0], sc[1]), 1
@@ -115,9 +115,8 @@ class FlyerRetrievalService:
                     needs_geocoding.append(f["merchant"])
             flyers_with_dist.append({**f, "distance_km": dist, "address": addr})
 
-        # Background-geocode any uncached stores (fire-and-forget)
-        if needs_geocoding:
-            kick_geocoding(needs_geocoding, pc, self.cache)
+        # Background-geocode the precise user location + any uncached stores (fire-and-forget)
+        kick_geocoding(needs_geocoding, pc, self.cache)
 
         # Inject nearest FreshPro location (only when within 100 km or coords unknown)
         # BEFORE sorting, so it ranks by its own distance instead of always landing last.

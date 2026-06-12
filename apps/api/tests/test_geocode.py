@@ -2,7 +2,7 @@
 
 import math
 import pytest
-from flipp.geocode import haversine_km, store_coords_cached, _cache_key
+from flipp.geocode import haversine_km, store_coords_cached, _cache_key, cached_user_coords
 
 
 class FakeCache:
@@ -54,8 +54,15 @@ def test_cache_key_normalises_spaces_and_ampersand():
     k1 = _cache_key("T&T Supermarket", "L4C")
     k2 = _cache_key("t&t supermarket", "l4c")
     assert k1 == k2
-    assert "geo3:" in k1
+    assert "geo4:" in k1
     assert "L4C" in k1
+
+
+def test_cached_user_coords_prefers_precise_full_postal():
+    # Once kick_geocoding has cached the precise full-postal-code location, use it
+    # (not the FSA centroid) — and don't make a network call.
+    cache = FakeCache({"pcgeo:L4C0E6": (43.8935, -79.4610)})
+    assert cached_user_coords("L4C 0E6", cache) == (43.8935, -79.4610)
 
 
 def test_cache_key_normalises_apostrophe():
