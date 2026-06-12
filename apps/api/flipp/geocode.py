@@ -81,7 +81,7 @@ def _cache_key(merchant: str, fsa: str) -> str:
     old cached failures must not be reused.
     """
     normalised = merchant.lower().replace(" ", "").replace("&", "").replace("'", "")
-    return f"geo2:{normalised}:{fsa.upper()}"
+    return f"geo3:{normalised}:{fsa.upper()}"
 
 
 def store_coords_cached(
@@ -100,17 +100,22 @@ def store_coords_cached(
     return result[0]         # result[0]=coords (may be None), result[1]=is_stale
 
 
-def _nominatim_search(merchant: str, viewbox: str | None = None) -> tuple | None:
+def _nominatim_search(
+    merchant: str, viewbox: str | None = None, center: tuple | None = None
+) -> tuple | None:
     """Call OSM Nominatim; returns (lat, lon, display_name) or None. Holds _nominatim_sem.
 
     A free-text query that bakes the FSA into the string (e.g. "No Frills grocery
     L4C Canada") matches nothing, so we search the bare merchant name constrained
-    to a ``viewbox`` (a bounding box around the user's FSA centroid) instead.
+    to a ``viewbox`` around the user's FSA centroid. Nominatim orders results by
+    prominence, not distance, so when ``center`` is given we pull many candidates
+    and keep the one geographically nearest to it (the prominent-but-far store
+    would otherwise win).
     """
     url = (
         _NOMINATIM_URL
         + "?q=" + urllib.parse.quote(merchant)
-        + "&format=json&limit=1&countrycodes=ca"
+        + "&format=json&limit=40&countrycodes=ca"
     )
     if viewbox:
         url += "&viewbox=" + viewbox + "&bounded=1"
@@ -119,18 +124,20 @@ def _nominatim_search(merchant: str, viewbox: str | None = None) -> tuple | None
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read().decode())
-                if data:
-                    result = (
-                        float(data[0]["lat"]),
-                        float(data[0]["lon"]),
-                        data[0].get("display_name", ""),
-                    )
-                else:
-                    result = None
         except Exception:
-            result = None
+            data = None
         time.sleep(_NOMINATIM_DELAY)   # rate limit enforced inside the semaphore
-        return result
+
+    if not data:
+        return None
+    if center is not None:
+        best = min(
+            data,
+            key=lambda r: haversine_km(center[0], center[1], float(r["lat"]), float(r["lon"])),
+        )
+    else:
+        best = data[0]
+    return (float(best["lat"]), float(best["lon"]), best.get("display_name", ""))
 
 
 _ADDR_SKIP = frozenset({
@@ -192,11 +199,11 @@ def kick_geocoding(
         if centroid is None:
             return  # cannot bound the search; leave uncached so a later request retries
         lat, lon = centroid
-        d = 0.25
+        d = 0.1  # ~11 km half-box: keeps candidates local so the nearest store wins
         viewbox = f"{lon - d},{lat + d},{lon + d},{lat - d}"
         for merchant in to_geocode:
             key = _cache_key(merchant, fsa)
-            coords = _nominatim_search(merchant, viewbox)
+            coords = _nominatim_search(merchant, viewbox, center=centroid)
             cache.set(key, coords)
 
     threading.Thread(target=_worker, daemon=True).start()

@@ -119,12 +119,8 @@ class FlyerRetrievalService:
         if needs_geocoding:
             kick_geocoding(needs_geocoding, pc, self.cache)
 
-        # Sort: known distances ascending, unknown last (preserving Flipp order among unknowns)
-        known = [(f["distance_km"], i, f) for i, f in enumerate(flyers_with_dist) if f["distance_km"] is not None]
-        unknown = [f for f in flyers_with_dist if f["distance_km"] is None]
-        sorted_flyers = [f for _, _, f in sorted(known, key=lambda x: x[0])] + unknown
-
         # Inject nearest FreshPro location (only when within 100 km or coords unknown)
+        # BEFORE sorting, so it ranks by its own distance instead of always landing last.
         nearest_fp = self._nearest_freshpro(user_coords)
         if nearest_fp is not None:
             fp_dist: float | None = None
@@ -132,12 +128,17 @@ class FlyerRetrievalService:
                 fp_lat, fp_lon = nearest_fp.store["coords"]
                 fp_dist = round(haversine_km(user_coords[0], user_coords[1], fp_lat, fp_lon), 1)
             if fp_dist is None or fp_dist <= 100:
-                sorted_flyers.append({
+                flyers_with_dist.append({
                     "id": nearest_fp.store["flyer_id"],
                     "merchant": nearest_fp.store["name"],
                     "distance_km": fp_dist,
                     "address": nearest_fp.store["address"],
                 })
+
+        # Sort: known distances ascending, unknown last (preserving Flipp order among unknowns)
+        known = [(f["distance_km"], i, f) for i, f in enumerate(flyers_with_dist) if f["distance_km"] is not None]
+        unknown = [f for f in flyers_with_dist if f["distance_km"] is None]
+        sorted_flyers = [f for _, _, f in sorted(known, key=lambda x: x[0])] + unknown
 
         return {"postal_code": pc, "stale": stale, "flyers": sorted_flyers}
 
