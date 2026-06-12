@@ -49,6 +49,13 @@ MOCK_RECO = {
 }
 
 
+def test_healthz_ok_without_auth():
+    """Liveness probe must return 200 with no Authorization header."""
+    resp = client.get("/healthz")
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+
+
 def test_get_flyers_ok():
     with patch("server._make_service") as m:
         m.return_value.get_grocery_flyers.return_value = MOCK_FLYERS_RESP

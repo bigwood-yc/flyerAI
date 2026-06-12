@@ -42,9 +42,12 @@ _detail_cache = SqliteCache(_DB, ttl=_CACHE_TTL)
 _FRESHPRO_CACHE = SqliteCache(_DB, ttl=4 * 24 * 3600)   # FreshPro flyer: 4-day TTL
 
 
-def _warm_cache() -> None:
+_WARM_INTERVAL = 30 * 60   # re-warm stale FSAs every 30 minutes
+
+
+def _warm_once() -> None:
     """
-    Background thread: pre-compute recommendations for every FSA that already
+    One warming pass: pre-compute recommendations for every FSA that already
     has flyer data in the DB. Uses FSA-level keys so all 6-digit codes in the
     same area share one cached result. Re-warms stale entries; skips fresh ones.
     """
@@ -86,9 +89,23 @@ def _warm_cache() -> None:
             pass
 
 
+def _warm_loop() -> None:
+    """
+    Warm on boot, then periodically re-warm so popular areas stay instant and never
+    fall back to a cold (30–60 s) recompute once their 6 h cache expires. Each pass
+    skips entries that are still fresh, so the steady-state cost is near zero.
+    """
+    while True:
+        try:
+            _warm_once()
+        except Exception:
+            pass
+        time.sleep(_WARM_INTERVAL)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    threading.Thread(target=_warm_cache, daemon=True).start()
+    threading.Thread(target=_warm_loop, daemon=True).start()
     yield
 
 
@@ -107,9 +124,17 @@ app.add_middleware(
 async def log_timing(request: Request, call_next):
     t0 = time.monotonic()
     response = await call_next(request)
-    ms = int((time.monotonic() - t0) * 1000)
-    print(f"  → {request.method} {request.url.path} {response.status_code}  took {ms}ms")
+    if os.environ.get("DEBUG_TIMING"):
+        ms = int((time.monotonic() - t0) * 1000)
+        print(f"  → {request.method} {request.url.path} {response.status_code}  took {ms}ms")
     return response
+
+
+@app.get("/healthz")
+def healthz():
+    """Unauthenticated liveness probe. Lets an external uptime pinger keep the
+    free-tier instance awake (and the recommendation cache warm) between users."""
+    return {"ok": True}
 
 
 def _make_service() -> FlyerRetrievalService:
