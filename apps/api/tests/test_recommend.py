@@ -15,6 +15,10 @@ class FakeSvc:
     def get_flyer(self, store, postal_code):
         return self._flyer_map.get(store)
 
+    def get_flyer_items(self, flyer_info, postal_code):
+        flyer = self._flyer_map.get(flyer_info["merchant"])
+        return flyer["items"] if flyer else []
+
 
 class FakeEnricher:
     def __init__(self, mapping):
@@ -22,6 +26,19 @@ class FakeEnricher:
 
     def enrich(self, names):
         return {n: self._mapping[n] for n in names if n in self._mapping}
+
+
+class CountingEnricher(FakeEnricher):
+    """Records how many times enrich() is called and how many names it saw."""
+    def __init__(self, mapping):
+        super().__init__(mapping)
+        self.calls = 0
+        self.total_names = 0
+
+    def enrich(self, names):
+        self.calls += 1
+        self.total_names += len(names)
+        return super().enrich(names)
 
 
 def _item(name, price, store, price_text=""):
@@ -174,6 +191,28 @@ def test_store_filter_matches_case_insensitively():
     assert dairy["best_store"] == "No Frills"
     # FreshCo must NOT appear
     assert all(d["store"] == "No Frills" for d in dairy["deals"])
+
+
+def test_enrich_called_once_across_multiple_stores():
+    """All stores' item names are enriched in a single batched call, not per-store."""
+    flyers = [{"id": 1, "merchant": "A"}, {"id": 2, "merchant": "B"}, {"id": 3, "merchant": "C"}]
+    flyer_map = {
+        "A": _flyer("A", [_item("BEEF", 5.0, "A")]),
+        "B": _flyer("B", [_item("MILK", 3.0, "B")]),
+        "C": _flyer("C", [_item("KALE", 2.0, "C")]),
+    }
+    enr_map = {
+        "BEEF": _enr("meat", "牛肉"),
+        "MILK": _enr("dairy", "牛奶"),
+        "KALE": _enr("produce", "羽衣甘蓝"),
+    }
+    enricher = CountingEnricher(enr_map)
+    engine = RecommendationEngine(FakeSvc(flyers, flyer_map), enricher)
+    result = engine.generate("L3R0B1")
+
+    assert enricher.calls == 1                       # one batched enrich, not 3
+    assert enricher.total_names == 3                 # all unique names in that call
+    assert {g["category"] for g in result["weekly_guide"]} == {"meat", "dairy", "produce"}
 
 
 def test_weekly_guide_sorted_by_category_priority():

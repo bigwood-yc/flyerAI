@@ -6,6 +6,8 @@ Aggregates enriched flyer data across all available stores and produces:
   - shopping_route: stores ordered by number of categories they win
 """
 
+from concurrent.futures import ThreadPoolExecutor
+
 from .enrich import CATEGORIES
 from . import stores as _stores_mod
 
@@ -49,15 +51,41 @@ class RecommendationEngine:
             cat: [] for cat in CATEGORIES if cat != "other"
         }
 
-        for flyer_info in flyers:
-            store = flyer_info["merchant"]
-            flyer = self.service.get_flyer(store, postal_code)
-            if flyer is None:
+        # Phase 1: fetch each store's items in parallel (network I/O bound). A single
+        # store failing is skipped rather than failing the whole recommendation.
+        def _fetch(flyer_info):
+            try:
+                return flyer_info, self.service.get_flyer_items(flyer_info, postal_code)
+            except Exception:
+                return flyer_info, None
+
+        if flyers:
+            with ThreadPoolExecutor(max_workers=min(8, len(flyers))) as pool:
+                fetched = list(pool.map(_fetch, flyers))
+        else:
+            fetched = []
+
+        # Phase 2: gather every unique product name and translate them in ONE batched
+        # enrich call (the enricher dedupes, caches and parallelises internally).
+        priced_by_store: list[tuple[str, list[dict]]] = []
+        all_names: list[str] = []
+        seen_names: set[str] = set()
+        for flyer_info, items in fetched:
+            if not items:
                 continue
-            priced = [i for i in flyer["items"] if i["price"] not in (None, "")]
+            priced = [i for i in items if i["price"] not in (None, "")]
             if not priced:
                 continue
-            enr = self.enricher.enrich([it["name"] for it in priced])
+            priced_by_store.append((flyer_info["merchant"], priced))
+            for it in priced:
+                if it["name"] not in seen_names:
+                    seen_names.add(it["name"])
+                    all_names.append(it["name"])
+
+        enr = self.enricher.enrich(all_names) if all_names else {}
+
+        # Phase 3: bucket each grocery item into its category
+        for store, priced in priced_by_store:
             for it in priced:
                 e = enr.get(it["name"])
                 if e is None or not e["is_grocery"]:

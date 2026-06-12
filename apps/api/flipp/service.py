@@ -141,6 +141,32 @@ class FlyerRetrievalService:
 
         return {"postal_code": pc, "stale": stale, "flyers": sorted_flyers}
 
+    def get_flyer_items(self, flyer_info: dict, postal_code: str) -> list[dict]:
+        """
+        Priced items for a flyer we already have listing info for, resolved via its
+        known ``id`` — without recomputing the full grocery listing (used by the
+        recommendation engine's parallel fetch).
+
+        FreshPro synthetic ids (e.g. ``freshpro:rh``) bypass Flipp and read from the
+        matching scraper. Returns [] when the flyer cannot be resolved.
+        """
+        fid = flyer_info.get("id")
+        merchant = flyer_info.get("merchant", "")
+
+        if isinstance(fid, str) and fid.startswith("freshpro:"):
+            scraper = next(
+                (s for s in self._freshpro_scrapers if s.store["flyer_id"] == fid),
+                None,
+            )
+            return scraper.fetch_items() if scraper is not None else []
+
+        def refresh():
+            raw_items = self.client.fetch_items(fid)
+            return [_clean_item(it, merchant, fid) for it in raw_items]
+
+        items, _stale = self._cached_or_refresh(f"items:{fid}", refresh)
+        return items
+
     def get_flyer(self, store: str, postal_code: str):
         """
         The current grocery flyer for one store, with its priced items.
