@@ -6,9 +6,11 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { getFlyer, type FlyerItem, type FlyerResponse } from "../../lib/api";
+import { type FlyerItem } from "../../lib/api";
+import { useFlyerQuery, useSlowLoadHint } from "../../lib/queries";
 import FlyerItemRow from "../../components/FlyerItemRow";
 
 const CATEGORY_CHIPS = [
@@ -28,9 +30,8 @@ export default function FlyerDetailScreen() {
     postal_code: string;
   }>();
   const navigation = useNavigation();
-  const [data, setData] = useState<FlyerResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { data, isLoading, isFetching, error, refetch } = useFlyerQuery(store, postal_code);
+  const slow = useSlowLoadHint(isLoading);
   const [activeCategory, setActiveCategory] = useState("all");
 
   useEffect(() => {
@@ -38,20 +39,6 @@ export default function FlyerDetailScreen() {
       navigation.setOptions({ title: `${store} 本周特价` });
     }
   }, [store, navigation]);
-
-  useEffect(() => {
-    if (!store || !postal_code) return;
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    getFlyer(store, postal_code)
-      .then((d) => { if (!cancelled) setData(d); })
-      .catch((e: unknown) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "加载失败，请重试");
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [store, postal_code]);
 
   const filteredItems = useMemo<FlyerItem[]>(() => {
     if (!data) return [];
@@ -64,11 +51,16 @@ export default function FlyerDetailScreen() {
     return [...categoryFiltered].sort((a, b) => Number(a.price) - Number(b.price));
   }, [data, activeCategory]);
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <View className="flex-1 bg-gray-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#3b82f6" />
-        <Text className="text-gray-500 mt-3">正在加载传单...</Text>
+      <View className="flex-1 bg-gray-50 items-center justify-center px-8">
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text className="text-body text-ink-soft mt-4">正在加载传单...</Text>
+        {slow && (
+          <Text className="text-caption text-ink-soft mt-2 text-center leading-6">
+            首次启动服务器需 30–60 秒，请耐心等待，不要离开此页面
+          </Text>
+        )}
       </View>
     );
   }
@@ -76,9 +68,15 @@ export default function FlyerDetailScreen() {
   if (error || !data) {
     return (
       <View className="flex-1 bg-gray-50 items-center justify-center px-6">
-        <Text className="text-red-500 text-center">
-          {error || "该超市暂无传单 / No flyer available"}
+        <Text className="text-body text-red-600 text-center mb-5 leading-7">
+          {error instanceof Error ? error.message : "该超市暂无传单"}
         </Text>
+        <TouchableOpacity
+          className="bg-brand rounded-xl px-8 min-h-[52px] items-center justify-center"
+          onPress={() => refetch()}
+        >
+          <Text className="text-white font-bold text-body">重新加载</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -86,8 +84,8 @@ export default function FlyerDetailScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {data.stale && (
-        <View className="bg-orange-100 px-4 py-2">
-          <Text className="text-orange-700 text-xs text-center">
+        <View className="bg-amber-100 px-4 py-2">
+          <Text className="text-warn text-caption text-center">
             显示的是缓存数据，可能不是最新传单
           </Text>
         </View>
@@ -98,19 +96,19 @@ export default function FlyerDetailScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         className="flex-grow-0 border-b border-gray-200 bg-white"
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 10, gap: 10, alignItems: "center" }}
       >
         {CATEGORY_CHIPS.map((chip) => (
           <TouchableOpacity
             key={chip.key}
-            className={`rounded-full px-3 py-1 ${
-              activeCategory === chip.key ? "bg-blue-500" : "bg-gray-100"
+            className={`rounded-full px-4 min-h-[44px] justify-center ${
+              activeCategory === chip.key ? "bg-brand" : "bg-gray-100"
             }`}
             onPress={() => setActiveCategory(chip.key)}
           >
             <Text
-              className={`text-xs font-medium ${
-                activeCategory === chip.key ? "text-white" : "text-gray-600"
+              className={`text-body font-medium ${
+                activeCategory === chip.key ? "text-white" : "text-ink-soft"
               }`}
             >
               {chip.label}
@@ -124,9 +122,12 @@ export default function FlyerDetailScreen() {
         data={filteredItems}
         keyExtractor={(item, index) => `${item.name}-${index}`}
         contentContainerStyle={{ padding: 12 }}
+        refreshControl={
+          <RefreshControl refreshing={isFetching && !isLoading} onRefresh={refetch} tintColor="#2563eb" />
+        }
         ListEmptyComponent={
-          <Text className="text-gray-400 text-center mt-8">
-            暂无商品数据 / No items available
+          <Text className="text-body text-ink-soft text-center mt-10">
+            暂无商品数据
           </Text>
         }
         renderItem={({ item }) => <FlyerItemRow item={item} />}

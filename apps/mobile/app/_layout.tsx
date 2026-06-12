@@ -2,8 +2,20 @@ import "../global.css";
 import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import type { Session } from "@supabase/supabase-js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PostalCodeProvider } from "../lib/PostalCodeContext";
 import { supabase } from "../lib/supabase";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60_000,   // results stay "fresh" 5 min — instant re-navigation
+      gcTime: 30 * 60_000,     // keep cached data 30 min after a screen unmounts
+      retry: 1,                // one retry; a 60s timeout already covers cold starts
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 export default function RootLayout() {
   // undefined = still loading; null = no session; Session = logged in
@@ -40,19 +52,21 @@ export default function RootLayout() {
   if (session === undefined) return null;
 
   return (
-    <PostalCodeProvider>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="flyer/[store]"
-          options={{
-            headerBackTitle: "返回",
-            headerTitleStyle: { fontWeight: "bold" },
-          }}
-        />
-      </Stack>
-    </PostalCodeProvider>
+    <QueryClientProvider client={queryClient}>
+      <PostalCodeProvider>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="flyer/[store]"
+            options={{
+              headerBackTitle: "返回",
+              headerTitleStyle: { fontWeight: "bold" },
+            }}
+          />
+        </Stack>
+      </PostalCodeProvider>
+    </QueryClientProvider>
   );
 }

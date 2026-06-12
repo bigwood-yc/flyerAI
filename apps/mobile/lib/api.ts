@@ -75,6 +75,22 @@ export function parsePriceUnit(priceText: string): string {
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
+// Long enough to cover a Render free-tier cold start (~30–60s) so the first
+// request after the server sleeps still succeeds instead of hanging forever.
+const REQUEST_TIMEOUT_MS = 60_000;
+
+/** Error with a user-facing Chinese message and a machine-readable `kind`. */
+export class ApiError extends Error {
+  kind: "timeout" | "network" | "server";
+  status?: number;
+  constructor(kind: ApiError["kind"], message: string, status?: number) {
+    super(message);
+    this.name = "ApiError";
+    this.kind = kind;
+    this.status = status;
+  }
+}
+
 async function fetchJson<T>(path: string): Promise<T> {
   const {
     data: { session },
@@ -84,10 +100,22 @@ async function fetchJson<T>(path: string): Promise<T> {
     headers["Authorization"] = `Bearer ${session.access_token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { headers });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { headers, signal: controller.signal });
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new ApiError("timeout", "服务器响应超时，请稍后重试");
+    }
+    throw new ApiError("network", "网络连接失败，请检查网络后重试");
+  } finally {
+    clearTimeout(timer);
+  }
+
   if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status}: ${text}`);
+    throw new ApiError("server", `服务器开小差了（${res.status}），请稍后重试`, res.status);
   }
   return res.json() as Promise<T>;
 }
