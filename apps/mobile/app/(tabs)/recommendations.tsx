@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { usePostalCode } from "../../lib/PostalCodeContext";
 import { getRecommendations, type RecommendationsResponse } from "../../lib/api";
 import CategoryCard from "../../components/CategoryCard";
@@ -20,6 +20,8 @@ export default function RecommendationsScreen() {
   const [error, setError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
+
+  useFocusEffect(useCallback(() => { setIsNavigating(false); }, []));
 
   const storeFilter: string[] | undefined = storesParam
     ? (Array.isArray(storesParam) ? storesParam : storesParam.split(","))

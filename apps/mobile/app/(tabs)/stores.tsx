@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { usePostalCode } from "../../lib/PostalCodeContext";
 import { getFlyers, type FlyersResponse } from "../../lib/api";
 import StoreItem from "../../components/StoreItem";
@@ -20,6 +20,8 @@ export default function StoresScreen() {
   const [retryKey, setRetryKey] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useFocusEffect(useCallback(() => { setIsNavigating(false); }, []));
 
   useEffect(() => {
     if (!postalCode) return;
