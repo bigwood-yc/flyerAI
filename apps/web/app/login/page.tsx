@@ -232,7 +232,7 @@ export default function LoginPage() {
             <div className="text-4xl" aria-hidden="true">📬</div>
             <p className="text-sm text-gray-600">
               登录链接已发送至 {mlEmail}。<br />
-              <span className="text-gray-400">Click the link in your email to sign in.</span>
+              <span className="text-gray-400">请点击邮件中的链接完成登录。</span>
             </p>
             <button
               onClick={() => { setMlSent(false); setError(""); }}
