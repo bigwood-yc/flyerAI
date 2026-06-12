@@ -138,8 +138,10 @@ def healthz():
 
 
 def _make_service() -> FlyerRetrievalService:
+    # A full FreshPro flyer is ~80 items; the vision reply needs well above the
+    # 2000-token default or the JSON array gets truncated and parses to nothing.
     freshpro_scrapers = [
-        FreshProScraper(store_meta, AnthropicClient(), _FRESHPRO_CACHE)
+        FreshProScraper(store_meta, AnthropicClient(max_tokens=8000), _FRESHPRO_CACHE)
         for store_meta in FRESHPRO_STORES
     ]
     return FlyerRetrievalService(FlippClient(), _FLYER_CACHE, freshpro_scrapers=freshpro_scrapers)
@@ -201,8 +203,9 @@ def get_flyer(
     _check_rate_limit(user_id)
     t0 = time.monotonic()
     pc = postal_code.replace(" ", "").upper()
-    # Flyer content is FSA-wide (same items across the 6-digit codes in an area)
-    detail_key = f"flyer_detail_v2:{store.strip().lower()}:{pc[:3]}"
+    # Flyer content is FSA-wide (same items across the 6-digit codes in an area).
+    # v3: invalidate any cached-empty FreshPro details from the max_tokens bug.
+    detail_key = f"flyer_detail_v3:{store.strip().lower()}:{pc[:3]}"
 
     cached = _detail_cache.get(detail_key)
     if cached is not None and not cached[1]:

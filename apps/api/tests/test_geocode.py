@@ -54,7 +54,7 @@ def test_cache_key_normalises_spaces_and_ampersand():
     k1 = _cache_key("T&T Supermarket", "L4C")
     k2 = _cache_key("t&t supermarket", "l4c")
     assert k1 == k2
-    assert "geo:" in k1
+    assert "geo2:" in k1
     assert "L4C" in k1
 
 

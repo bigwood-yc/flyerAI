@@ -74,9 +74,14 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _cache_key(merchant: str, fsa: str) -> str:
-    """Normalised cache key for a (merchant, FSA) geocoding result."""
+    """Normalised cache key for a (merchant, FSA) geocoding result.
+
+    v2 (``geo2:``): switched from a free-text ``"{merchant} grocery {fsa} Canada"``
+    query (which Nominatim returned nothing for) to a viewbox-bounded search, so
+    old cached failures must not be reused.
+    """
     normalised = merchant.lower().replace(" ", "").replace("&", "").replace("'", "")
-    return f"geo:{normalised}:{fsa.upper()}"
+    return f"geo2:{normalised}:{fsa.upper()}"
 
 
 def store_coords_cached(
@@ -95,13 +100,20 @@ def store_coords_cached(
     return result[0]         # result[0]=coords (may be None), result[1]=is_stale
 
 
-def _nominatim_search(query: str) -> tuple | None:
-    """Call OSM Nominatim; returns (lat, lon, display_name) or None. Holds _nominatim_sem."""
+def _nominatim_search(merchant: str, viewbox: str | None = None) -> tuple | None:
+    """Call OSM Nominatim; returns (lat, lon, display_name) or None. Holds _nominatim_sem.
+
+    A free-text query that bakes the FSA into the string (e.g. "No Frills grocery
+    L4C Canada") matches nothing, so we search the bare merchant name constrained
+    to a ``viewbox`` (a bounding box around the user's FSA centroid) instead.
+    """
     url = (
         _NOMINATIM_URL
-        + "?q=" + urllib.parse.quote(query)
+        + "?q=" + urllib.parse.quote(merchant)
         + "&format=json&limit=1&countrycodes=ca"
     )
+    if viewbox:
+        url += "&viewbox=" + viewbox + "&bounded=1"
     req = urllib.request.Request(url, headers={"User-Agent": _NOMINATIM_UA})
     with _nominatim_sem:
         try:
@@ -174,9 +186,17 @@ def kick_geocoding(
         return
 
     def _worker() -> None:
+        # Bound the search to a ~±0.25° box (≈25 km) around the FSA centroid so we
+        # find the brand's nearby store rather than a random one country-wide.
+        centroid = postal_code_coords(fsa)
+        if centroid is None:
+            return  # cannot bound the search; leave uncached so a later request retries
+        lat, lon = centroid
+        d = 0.25
+        viewbox = f"{lon - d},{lat + d},{lon + d},{lat - d}"
         for merchant in to_geocode:
             key = _cache_key(merchant, fsa)
-            coords = _nominatim_search(f"{merchant} grocery {fsa} Canada")
+            coords = _nominatim_search(merchant, viewbox)
             cache.set(key, coords)
 
     threading.Thread(target=_worker, daemon=True).start()
