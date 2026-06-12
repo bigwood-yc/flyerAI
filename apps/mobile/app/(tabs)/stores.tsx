@@ -18,6 +18,7 @@ export default function StoresScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -71,17 +72,14 @@ export default function StoresScreen() {
   };
 
   const handleRecommend = () => {
-    if (!data) return;
+    if (!data || isNavigating) return;
+    setIsNavigating(true);
     const selectedArr = Array.from(selected);
     const params: Record<string, string> = {};
-    // Only pass stores param when it's a subset (not all selected)
     if (selectedArr.length > 0 && selectedArr.length < data.flyers.length) {
       params.stores = selectedArr.join(",");
     }
-    router.push({
-      pathname: "/(tabs)/recommendations",
-      params,
-    });
+    router.push({ pathname: "/(tabs)/recommendations", params });
   };
 
   if (!postalCode) {
@@ -159,12 +157,14 @@ export default function StoresScreen() {
             address={item.address}
             selected={selected.has(item.merchant)}
             onToggleSelect={() => toggleStore(item.merchant)}
-            onNavigate={() =>
+            onNavigate={() => {
+              if (isNavigating) return;
+              setIsNavigating(true);
               router.push({
                 pathname: "/flyer/[store]",
                 params: { store: item.merchant, postal_code: postalCode },
-              })
-            }
+              });
+            }}
           />
         )}
       />
@@ -177,7 +177,7 @@ export default function StoresScreen() {
               selected.size === 0 ? "bg-gray-300" : "bg-green-600"
             }`}
             onPress={handleRecommend}
-            disabled={selected.size === 0}
+            disabled={selected.size === 0 || isNavigating}
           >
             <Text className="text-white font-bold text-base">
               {selected.size === 0

@@ -19,6 +19,7 @@ export default function RecommendationsScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryKey, setRetryKey] = useState(0);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const storeFilter: string[] | undefined = storesParam
     ? (Array.isArray(storesParam) ? storesParam : storesParam.split(","))
@@ -105,12 +106,14 @@ export default function RecommendationsScreen() {
           <CategoryCard
             guide={item}
             postalCode={postalCode}
-            onPress={() =>
+            onPress={() => {
+              if (isNavigating) return;
+              setIsNavigating(true);
               router.push({
                 pathname: "/flyer/[store]",
                 params: { store: item.best_store, postal_code: postalCode },
-              })
-            }
+              });
+            }}
           />
         )}
       />
