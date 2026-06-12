@@ -61,21 +61,21 @@ export default function OnboardingScreen() {
         <View className="flex-1 items-center justify-center px-6 py-12">
           <View className="w-full space-y-6">
             <View className="space-y-1">
-              <Text className="text-xl font-bold text-gray-900">完善资料</Text>
-              <Text className="text-sm text-gray-500">
+              <Text className="text-display font-bold text-ink">完善资料</Text>
+              <Text className="text-body text-ink-soft">
                 仅需一次，随时可修改
               </Text>
             </View>
 
             {!!error && (
               <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-                <Text className="text-red-600 text-sm">{error}</Text>
+                <Text className="text-red-600 text-body">{error}</Text>
               </View>
             )}
 
             <View className="space-y-4">
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-1">
+                <Text className="text-body font-medium text-ink mb-1">
                   常用邮编{" "}
                   <Text className="text-gray-400 font-normal">（可选）</Text>
                 </Text>
@@ -85,18 +85,18 @@ export default function OnboardingScreen() {
                   placeholder="L3R 0B1"
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  className="w-full border border-gray-300 bg-white rounded-xl px-4 py-3 text-sm"
+                  className="w-full border-2 border-gray-300 bg-white rounded-2xl px-4 py-4 text-body text-ink"
                   accessibilityLabel="常用邮编"
                 />
                 {postalCode !== "" && !postalValid && (
-                  <Text className="text-red-500 text-xs mt-1">
+                  <Text className="text-red-600 text-caption mt-1">
                     格式应为 A1A 1A1
                   </Text>
                 )}
               </View>
 
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-1">
+                <Text className="text-body font-medium text-ink mb-1">
                   手机号{" "}
                   <Text className="text-gray-400 font-normal">（可选）</Text>
                 </Text>
@@ -105,7 +105,7 @@ export default function OnboardingScreen() {
                   onChangeText={setPhone}
                   placeholder="+1 416 000 0000"
                   keyboardType="phone-pad"
-                  className="w-full border border-gray-300 bg-white rounded-xl px-4 py-3 text-sm"
+                  className="w-full border-2 border-gray-300 bg-white rounded-2xl px-4 py-4 text-body text-ink"
                   accessibilityLabel="手机号"
                 />
               </View>
@@ -115,11 +115,11 @@ export default function OnboardingScreen() {
               <TouchableOpacity
                 onPress={() => complete(false)}
                 disabled={loading || !postalValid}
-                className="w-full bg-blue-600 rounded-xl py-3 disabled:opacity-50"
+                className="w-full bg-brand rounded-2xl min-h-[56px] items-center justify-center disabled:opacity-50"
                 accessibilityRole="button"
                 accessibilityLabel="开始使用"
               >
-                <Text className="text-white font-semibold text-center">
+                <Text className="text-white font-semibold text-center text-title">
                   {loading ? "保存中..." : "开始使用"}
                 </Text>
               </TouchableOpacity>
@@ -129,7 +129,7 @@ export default function OnboardingScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="跳过"
               >
-                <Text className="text-gray-400 text-sm text-center py-1">
+                <Text className="text-ink-soft text-body text-center py-1">
                   跳过
                 </Text>
               </TouchableOpacity>

@@ -15,15 +15,15 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 bg-gray-50 items-center justify-center px-6">
       <Text
-        className="text-4xl mb-3"
+        className="text-6xl mb-4"
         accessibilityElementsHidden
         importantForAccessibility="no"
       >
         🛒
       </Text>
-      <Text className="text-2xl font-bold text-gray-900 mb-1">本周特价</Text>
-      <Text className="text-sm text-gray-500 mb-8">
-        找附近最低价超市 / Find This Week's Best Deals
+      <Text className="text-display font-bold text-ink mb-2">本周特价</Text>
+      <Text className="text-body text-ink-soft mb-8 text-center leading-7">
+        输入邮编，找附近最便宜的超市
       </Text>
       <PostalCodeInput onSubmit={handleSubmit} />
     </View>

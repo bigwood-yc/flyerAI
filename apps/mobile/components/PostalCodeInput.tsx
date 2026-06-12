@@ -24,7 +24,7 @@ export default function PostalCodeInput({ onSubmit }: Props) {
   return (
     <View className="w-full">
       <TextInput
-        className="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-base text-gray-900 mb-3"
+        className="w-full bg-white border-2 border-gray-300 rounded-2xl px-4 py-4 text-title text-ink mb-3"
         placeholder="L3R 0B1"
         placeholderTextColor="#9ca3af"
         value={value}
@@ -39,14 +39,14 @@ export default function PostalCodeInput({ onSubmit }: Props) {
         accessibilityLabel="邮编输入框"
       />
       {error ? (
-        <Text className="text-red-500 text-sm mb-3">{error}</Text>
+        <Text className="text-red-600 text-body mb-3 leading-6">{error}</Text>
       ) : null}
       <TouchableOpacity
-        className="w-full bg-blue-500 rounded-lg py-3 items-center"
+        className="w-full bg-brand rounded-2xl min-h-[56px] items-center justify-center"
         onPress={handleSubmit}
         accessibilityRole="button"
       >
-        <Text className="text-white font-bold text-base">查找特价</Text>
+        <Text className="text-white font-bold text-title">查找特价</Text>
       </TouchableOpacity>
     </View>
   );

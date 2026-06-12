@@ -26,51 +26,58 @@ export default function CategoryCard({ guide, postalCode, onPress }: Props) {
   };
 
   return (
-    <TouchableOpacity
-      className="bg-white rounded-lg p-4 mb-3 border border-gray-200"
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${guide.category_zh}，最优超市 ${guide.best_store}`}
-    >
+    <View className="bg-white rounded-2xl mb-4 border border-gray-200 overflow-hidden">
       {/* Category title */}
-      <Text className="text-sm font-bold text-gray-900 mb-2">
-        {guide.emoji} {guide.category_zh}
-      </Text>
+      <View className="px-4 pt-4 pb-1 flex-row items-center gap-2">
+        <Text className="text-headline" accessibilityElementsHidden>{guide.emoji}</Text>
+        <Text className="text-title font-bold text-ink">{guide.category_zh}</Text>
+      </View>
 
-      {/* Store name + navigation button (left-aligned) */}
-      <View className="flex-row items-start justify-between mb-2">
-        <View className="flex-1">
-          <Text className="text-sm font-semibold text-blue-500">
+      {/* Best store + map button */}
+      <View className="px-4 pb-3 flex-row items-center justify-between">
+        <View className="flex-1 min-w-0 pr-3">
+          <Text className="text-caption text-ink-soft">最优超市</Text>
+          <Text className="text-title font-semibold text-brand" numberOfLines={1}>
             {guide.best_store}
           </Text>
-          <Text className="text-xs text-gray-400">📍 点击查找附近门店</Text>
         </View>
         <TouchableOpacity
-          className="bg-green-600 rounded px-2 py-1 ml-3 flex-shrink-0"
+          className="bg-price rounded-xl px-4 min-h-[48px] items-center justify-center flex-shrink-0"
           onPress={openMaps}
           accessibilityRole="button"
           accessibilityLabel={`在地图中查找 ${guide.best_store}`}
         >
-          <Text className="text-white text-xs font-medium">导航 →</Text>
+          <Text className="text-white text-body font-semibold">🗺 门店地图</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Deals list (left-aligned) */}
-      <View className="border-t border-gray-100 pt-2">
+      {/* Deals list */}
+      <View className="border-t border-gray-100 px-4 py-1.5">
         {guide.deals.map((deal) => {
           const unit = parsePriceUnit(deal.price_text);
           return (
-            <Text key={deal.name} className="text-xs text-gray-600 mb-0.5">
-              {deal.zh_name}
-              {" · "}
-              <Text className="text-green-600 font-semibold">
-                ${deal.price.toFixed(2)}
-                {unit ? `/${unit}` : ""}
+            <View key={deal.name} className="flex-row items-center justify-between py-2">
+              <Text className="text-body text-ink flex-1 min-w-0 pr-3" numberOfLines={1}>
+                {deal.zh_name}
               </Text>
-            </Text>
+              <Text className="text-headline font-bold text-price flex-shrink-0">
+                ${deal.price.toFixed(2)}
+                {unit ? <Text className="text-caption text-ink-soft">/{unit}</Text> : null}
+              </Text>
+            </View>
           );
         })}
       </View>
-    </TouchableOpacity>
+
+      {/* Footer: clear call-to-action to open the full flyer */}
+      <TouchableOpacity
+        className="border-t border-gray-100 min-h-[52px] items-center justify-center bg-gray-50"
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`查看 ${guide.best_store} 的全部特价`}
+      >
+        <Text className="text-body font-semibold text-brand">查看全部特价 →</Text>
+      </TouchableOpacity>
+    </View>
   );
 }

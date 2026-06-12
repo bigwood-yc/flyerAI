@@ -122,11 +122,11 @@ export default function LoginScreen() {
   }
 
   const tabStyle = (t: Tab) =>
-    `flex-1 py-2 items-center rounded-lg ${tab === t ? "bg-white shadow" : ""}`;
+    `flex-1 min-h-[44px] items-center justify-center rounded-lg ${tab === t ? "bg-white shadow" : ""}`;
   const tabTextStyle = (t: Tab) =>
-    `text-xs font-medium ${tab === t ? "text-gray-900" : "text-gray-500"}`;
+    `text-body font-medium ${tab === t ? "text-ink" : "text-ink-soft"}`;
 
-  const inputClass = "w-full border border-gray-300 bg-white rounded-xl px-4 py-3 text-sm";
+  const inputClass = "w-full border-2 border-gray-300 bg-white rounded-2xl px-4 py-4 text-body text-ink";
 
   return (
     <KeyboardAvoidingView
@@ -137,7 +137,7 @@ export default function LoginScreen() {
         <View className="flex-1 items-center justify-center px-6 py-12">
           <View className="w-full space-y-6">
             <View className="space-y-1">
-              <Text className="text-2xl font-bold text-gray-900">🛒 Grocery AI</Text>
+              <Text className="text-display font-bold text-ink">🛒 Grocery AI</Text>
             </View>
 
             {/* Tab switcher */}
@@ -155,7 +155,7 @@ export default function LoginScreen() {
 
             {!!error && (
               <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-                <Text className="text-red-600 text-sm">{error}</Text>
+                <Text className="text-red-600 text-body">{error}</Text>
               </View>
             )}
 
@@ -181,9 +181,9 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={handleSignIn}
                   disabled={loading}
-                  className="w-full bg-blue-600 rounded-xl py-3 disabled:opacity-50"
+                  className="w-full bg-brand rounded-2xl min-h-[56px] items-center justify-center disabled:opacity-50"
                 >
-                  <Text className="text-white font-semibold text-center">
+                  <Text className="text-white font-semibold text-center text-title">
                     {loading ? "登录中..." : "登录"}
                   </Text>
                 </TouchableOpacity>
@@ -219,9 +219,9 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={handleSignUp}
                   disabled={loading}
-                  className="w-full bg-blue-600 rounded-xl py-3 disabled:opacity-50"
+                  className="w-full bg-brand rounded-2xl min-h-[56px] items-center justify-center disabled:opacity-50"
                 >
-                  <Text className="text-white font-semibold text-center">
+                  <Text className="text-white font-semibold text-center text-title">
                     {loading ? "注册中..." : "注册"}
                   </Text>
                 </TouchableOpacity>
@@ -231,14 +231,14 @@ export default function LoginScreen() {
             {tab === "signup" && signupStep === "verify" && (
               <View className="space-y-4 items-center">
                 <Text className="text-4xl">📬</Text>
-                <Text className="text-sm text-gray-600 text-center">
+                <Text className="text-body text-ink-soft text-center leading-7">
                   验证邮件已发送至{"\n"}
                   <Text className="font-medium">{suEmail}</Text>
                   {"\n\n"}请在浏览器中点击邮件链接完成验证，
                   然后切换到「登录」Tab 用密码登录。
                 </Text>
                 <TouchableOpacity onPress={() => { setSignupStep("form"); setError(""); }}>
-                  <Text className="text-gray-400 text-sm">← 返回</Text>
+                  <Text className="text-ink-soft text-body">← 返回</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -246,7 +246,7 @@ export default function LoginScreen() {
             {/* OTP (magic link) */}
             {tab === "otp" && !otpSent && (
               <View className="space-y-3">
-                <Text className="text-xs text-gray-500">发送 6 位验证码到邮箱，无需密码。</Text>
+                <Text className="text-caption text-ink-soft">发送 6 位验证码到邮箱，无需密码。</Text>
                 <TextInput
                   value={otpEmail}
                   onChangeText={setOtpEmail}
@@ -260,9 +260,9 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   onPress={sendOtp}
                   disabled={loading || !otpEmail.includes("@")}
-                  className="w-full bg-blue-600 rounded-xl py-3 disabled:opacity-50"
+                  className="w-full bg-brand rounded-2xl min-h-[56px] items-center justify-center disabled:opacity-50"
                 >
-                  <Text className="text-white font-semibold text-center">
+                  <Text className="text-white font-semibold text-center text-title">
                     {loading ? "发送中..." : "发送验证码"}
                   </Text>
                 </TouchableOpacity>
@@ -271,7 +271,7 @@ export default function LoginScreen() {
 
             {tab === "otp" && otpSent && (
               <View className="space-y-3">
-                <Text className="text-xs text-gray-500 text-center">
+                <Text className="text-caption text-ink-soft text-center">
                   验证码已发至 {otpEmail}
                 </Text>
                 <TextInput
@@ -280,20 +280,20 @@ export default function LoginScreen() {
                   placeholder="6 位验证码"
                   keyboardType="number-pad"
                   maxLength={6}
-                  className="w-full border border-gray-300 bg-white rounded-xl px-4 py-4 text-xl text-center font-mono tracking-widest"
+                  className="w-full border-2 border-gray-300 bg-white rounded-2xl px-4 py-4 text-headline text-center font-mono tracking-widest"
                   accessibilityLabel="验证码"
                 />
                 <TouchableOpacity
                   onPress={verifyOtp}
                   disabled={loading || otp.length < 6}
-                  className="w-full bg-blue-600 rounded-xl py-3 disabled:opacity-50"
+                  className="w-full bg-brand rounded-2xl min-h-[56px] items-center justify-center disabled:opacity-50"
                 >
-                  <Text className="text-white font-semibold text-center">
+                  <Text className="text-white font-semibold text-center text-title">
                     {loading ? "验证中..." : "登录"}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { setOtpSent(false); setOtp(""); setError(""); }}>
-                  <Text className="text-gray-400 text-sm text-center">← 重新输入邮箱</Text>
+                  <Text className="text-ink-soft text-body text-center">← 重新输入邮箱</Text>
                 </TouchableOpacity>
               </View>
             )}
