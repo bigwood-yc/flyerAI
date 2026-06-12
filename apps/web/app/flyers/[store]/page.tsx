@@ -55,16 +55,16 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
     if (msg.startsWith("404")) {
       return (
         <div className="text-center py-12 space-y-3">
-          <p className="text-gray-500">该超市暂无传单 / No flyer available</p>
-          <Link href={`/flyers?postal_code=${pc}`} className="text-blue-600 underline">
+          <p className="text-body text-ink-soft">该超市暂无传单</p>
+          <Link href={`/flyers?postal_code=${pc}`} className="text-brand text-body underline">
             返回列表
           </Link>
         </div>
       );
     }
     return (
-      <div className="text-center py-12 text-red-600">
-        无法获取传单，请稍后重试 / Could not retrieve flyer
+      <div className="text-center py-12 text-red-600 text-body">
+        无法获取传单，请稍后重试
       </div>
     );
   }
@@ -77,27 +77,27 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
     <div className="space-y-2">
       <Link
         href={`/flyers?postal_code=${pc}`}
-        className="text-blue-600 text-sm inline-block"
+        className="text-brand text-body inline-block"
       >
         ← 返回列表
       </Link>
 
       <div>
-        <h2 className="text-xl font-bold">{data.store}</h2>
-        <p className="text-sm text-gray-500">
-          共 {totalGroceries} 个特价商品 / {totalGroceries} priced items
+        <h2 className="text-display font-bold text-ink">{data.store}</h2>
+        <p className="text-body text-ink-soft">
+          共 {totalGroceries} 个特价商品
         </p>
       </div>
 
       {data.stale && (
-        <p className="text-orange-600 text-sm bg-orange-50 border border-orange-200 px-3 py-2 rounded-lg">
-          数据来自缓存，可能不是最新 / Served from cache, may not be current
+        <p className="text-warn text-body bg-orange-50 border border-orange-200 px-3 py-2 rounded-lg">
+          数据来自缓存，可能不是最新
         </p>
       )}
 
       {groups.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 px-4 py-8 text-center text-gray-400">
-          暂无商品数据 / No items available
+        <div className="bg-white rounded-xl border border-gray-200 px-4 py-8 text-center text-ink-soft text-body">
+          暂无商品数据
         </div>
       ) : (
         groups.map((group) => (
@@ -111,8 +111,8 @@ export default async function StoreFlyerPage({ params, searchParams }: Props) {
       )}
 
       {filtered > 0 && (
-        <p className="text-sm text-gray-400 text-center">
-          已过滤 {filtered} 个非食品商品 / filtered {filtered} non-grocery items
+        <p className="text-caption text-ink-soft text-center">
+          已过滤 {filtered} 个非食品商品
         </p>
       )}
     </div>

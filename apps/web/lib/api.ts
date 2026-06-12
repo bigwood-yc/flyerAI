@@ -61,6 +61,8 @@ async function fetchJson<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
     headers: { Authorization: `Bearer ${token}` },
+    // Cover a Render free-tier cold start (~30–60s) instead of hanging forever.
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);

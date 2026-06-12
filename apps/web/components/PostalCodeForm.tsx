@@ -22,7 +22,7 @@ export default function PostalCodeForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <label htmlFor="postal-code" className="block text-sm text-gray-600">
+      <label htmlFor="postal-code" className="block text-body text-ink-soft">
         邮政编码 / Postal Code
       </label>
       <div className="flex gap-2">
@@ -34,18 +34,18 @@ export default function PostalCodeForm() {
           onChange={(e) => setCode(e.target.value)}
           placeholder="例如 L3R 0B1"
           maxLength={7}
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-lg
+          className="flex-1 border-2 border-gray-300 rounded-xl px-4 py-3 text-title
                      focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
         />
         <button
           type="submit"
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg
-                     hover:bg-blue-700 active:bg-blue-800 font-medium"
+          className="bg-brand text-white px-6 min-h-[52px] rounded-xl text-body
+                     hover:bg-blue-700 active:bg-blue-800 font-semibold flex-shrink-0"
         >
           查找
         </button>
       </div>
-      {error && <p className="text-red-600 text-sm">{error}</p>}
+      {error && <p className="text-red-600 text-body">{error}</p>}
     </form>
   );
 }

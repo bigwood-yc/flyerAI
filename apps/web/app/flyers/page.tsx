@@ -18,8 +18,8 @@ export default async function FlyersPage({ searchParams }: Props) {
   if (!pc) {
     return (
       <div className="text-center py-12 space-y-3">
-        <p className="text-gray-500">请先输入邮编 / Please enter a postal code</p>
-        <Link href="/" className="text-blue-600 underline">返回首页</Link>
+        <p className="text-body text-ink-soft">请先输入邮编</p>
+        <Link href="/" className="text-brand text-body underline">返回首页</Link>
       </div>
     );
   }
@@ -38,15 +38,15 @@ export default async function FlyersPage({ searchParams }: Props) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-bold">邮编 {data.postal_code} 的传单</h2>
-        <p className="text-sm text-gray-500">
-          共 {data.flyers.length} 家超市 / {data.flyers.length} stores
+        <h2 className="text-display font-bold text-ink">邮编 {data.postal_code} 的传单</h2>
+        <p className="text-body text-ink-soft">
+          共 {data.flyers.length} 家超市
         </p>
       </div>
 
       {data.stale && (
-        <p className="text-orange-600 text-sm bg-orange-50 border border-orange-200 px-3 py-2 rounded-lg">
-          数据来自缓存，可能不是最新 / Served from cache, may not be current
+        <p className="text-warn text-body bg-orange-50 border border-orange-200 px-3 py-2 rounded-lg">
+          数据来自缓存，可能不是最新
         </p>
       )}
 

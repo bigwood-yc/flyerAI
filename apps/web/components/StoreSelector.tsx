@@ -70,14 +70,14 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
     <div className={`space-y-4 ${isPending ? "pointer-events-none opacity-75" : ""}`}>
       {/* Toolbar */}
       <div className="flex items-center justify-between">
-        <button onClick={toggleAll} className="text-sm text-blue-600 hover:underline disabled:opacity-50" disabled={isPending}>
+        <button onClick={toggleAll} className="text-body text-brand hover:underline disabled:opacity-50 min-h-[44px]" disabled={isPending}>
           {allSelected ? "取消全选" : "全选"}
         </button>
         {recsHref ? (
           <button
             onClick={navigateToRecs}
             disabled={isPending}
-            className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+            className="bg-price text-white text-body font-semibold px-4 min-h-[48px] rounded-xl hover:bg-green-700 transition disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isPending && pendingTarget === "recs" && (
               <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -85,7 +85,7 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
             本周推荐 ({selected.size}家) →
           </button>
         ) : (
-          <span className="text-sm text-gray-400 px-4 py-2">请选择至少一家超市</span>
+          <span className="text-body text-ink-soft px-4 py-2">请选择至少一家超市</span>
         )}
       </div>
 
@@ -120,19 +120,19 @@ export default function StoreSelector({ flyers, postalCode }: Props) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900 truncate">{f.merchant}</div>
+                  <div className="text-title font-semibold text-ink truncate">{f.merchant}</div>
                   <div className="flex items-center justify-between mt-1 gap-2">
                     <button
                       onClick={(e) => navigateToFlyer(e, f.merchant)}
                       disabled={isPending}
-                      className="text-sm text-blue-600 hover:underline flex-shrink-0 disabled:opacity-50 flex items-center gap-1"
+                      className="text-body text-brand hover:underline flex-shrink-0 disabled:opacity-50 flex items-center gap-1 min-h-[44px]"
                     >
                       {isThisLoading && (
                         <span className="inline-block w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                       )}
                       查看传单 →
                     </button>
-                    <div className="text-xs text-gray-400 text-right min-w-0">
+                    <div className="text-caption text-ink-soft text-right min-w-0">
                       {f.distance_km != null && (
                         <span>📍 ~{Number(f.distance_km).toFixed(1)} km</span>
                       )}

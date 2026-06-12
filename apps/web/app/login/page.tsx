@@ -94,17 +94,17 @@ export default function LoginPage() {
   }
 
   const tabClass = (t: Tab) =>
-    `flex-1 py-2 text-sm font-medium rounded-lg transition ${
+    `flex-1 py-2.5 text-body font-medium rounded-lg transition ${
       tab === t
-        ? "bg-white text-gray-900 shadow-sm"
-        : "text-gray-500 hover:text-gray-700"
+        ? "bg-white text-ink shadow-sm"
+        : "text-ink-soft hover:text-gray-700"
     }`;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-display font-bold text-ink">
             <span aria-hidden="true">🛒</span> Grocery AI
           </h1>
         </div>
@@ -117,7 +117,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <p className="text-red-600 text-body bg-red-50 border border-red-200 rounded-lg px-3 py-2">
             {error}
           </p>
         )}
@@ -130,7 +130,7 @@ export default function LoginPage() {
               value={siEmail}
               onChange={(e) => setSiEmail(e.target.value)}
               placeholder="邮箱"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
             <input
@@ -138,13 +138,13 @@ export default function LoginPage() {
               value={siPassword}
               onChange={(e) => setSiPassword(e.target.value)}
               placeholder="密码"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
               onKeyDown={(e) => e.key === "Enter" && handleSignIn()}
             />
             <button
               onClick={handleSignIn}
               disabled={loading}
-              className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-brand text-white rounded-xl py-3.5 text-body font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "登录中..." : "登录"}
             </button>
@@ -159,7 +159,7 @@ export default function LoginPage() {
               value={suEmail}
               onChange={(e) => setSuEmail(e.target.value)}
               placeholder="邮箱"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
             <input
@@ -167,20 +167,20 @@ export default function LoginPage() {
               value={suPassword}
               onChange={(e) => setSuPassword(e.target.value)}
               placeholder="密码（至少 8 位）"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="password"
               value={suConfirm}
               onChange={(e) => setSuConfirm(e.target.value)}
               placeholder="再次输入密码"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
               onKeyDown={(e) => e.key === "Enter" && handleSignUp()}
             />
             <button
               onClick={handleSignUp}
               disabled={loading}
-              className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-brand text-white rounded-xl py-3.5 text-body font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "注册中..." : "注册"}
             </button>
@@ -190,14 +190,14 @@ export default function LoginPage() {
         {tab === "signup" && signupStep === "verify" && (
           <div className="space-y-4 text-center">
             <div className="text-4xl" aria-hidden="true">📬</div>
-            <p className="text-sm text-gray-600">
+            <p className="text-body text-ink-soft">
               验证邮件已发送至 <span className="font-medium">{suEmail}</span>。
               <br />
               请点击邮件中的链接完成验证，之后即可登录。
             </p>
             <button
               onClick={() => { setSignupStep("form"); setError(""); }}
-              className="w-full text-gray-400 text-sm hover:text-gray-600"
+              className="w-full text-ink-soft text-body hover:text-gray-700"
             >
               ← 返回
             </button>
@@ -207,20 +207,20 @@ export default function LoginPage() {
         {/* Magic link tab */}
         {tab === "magic" && !mlSent && (
           <div className="space-y-3">
-            <p className="text-xs text-gray-500">发送一次性登录链接到邮箱，无需密码。</p>
+            <p className="text-caption text-ink-soft">发送一次性登录链接到邮箱，无需密码。</p>
             <input
               type="email"
               value={mlEmail}
               onChange={(e) => setMlEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
               onKeyDown={(e) => e.key === "Enter" && handleMagicLink()}
               autoFocus
             />
             <button
               onClick={handleMagicLink}
               disabled={loading || !mlEmail.includes("@")}
-              className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-brand text-white rounded-xl py-3.5 text-body font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "发送中..." : "发送登录链接"}
             </button>
@@ -230,13 +230,13 @@ export default function LoginPage() {
         {tab === "magic" && mlSent && (
           <div className="space-y-4 text-center">
             <div className="text-4xl" aria-hidden="true">📬</div>
-            <p className="text-sm text-gray-600">
+            <p className="text-body text-ink-soft">
               登录链接已发送至 {mlEmail}。<br />
-              <span className="text-gray-400">请点击邮件中的链接完成登录。</span>
+              <span className="text-ink-soft">请点击邮件中的链接完成登录。</span>
             </p>
             <button
               onClick={() => { setMlSent(false); setError(""); }}
-              className="w-full text-gray-400 text-sm hover:text-gray-600"
+              className="w-full text-ink-soft text-body hover:text-gray-700"
             >
               ← 重新输入邮箱 / Back
             </button>

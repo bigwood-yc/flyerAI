@@ -40,22 +40,22 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-sm space-y-6">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">完善资料</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            仅需一次 / Fill in once, edit any time
+          <h1 className="text-display font-bold text-ink">完善资料</h1>
+          <p className="text-body text-ink-soft mt-1">
+            仅需一次，随时可修改
           </p>
         </div>
 
         {error && (
-          <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <p className="text-red-600 text-body bg-red-50 border border-red-200 rounded-lg px-3 py-2">
             {error}
           </p>
         )}
 
         <div className="space-y-4">
           <div>
-            <label htmlFor="postal" className="block text-sm font-medium text-gray-700 mb-1">
-              常用邮编 <span className="text-gray-400 font-normal">（可选）</span>
+            <label htmlFor="postal" className="block text-body font-medium text-ink mb-1">
+              常用邮编 <span className="text-ink-soft font-normal">（可选）</span>
             </label>
             <input
               id="postal"
@@ -63,18 +63,18 @@ export default function OnboardingPage() {
               value={postalCode}
               onChange={(e) => setPostalCode(e.target.value)}
               placeholder="L3R 0B1"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {postalCode && !postalValid && (
-              <p className="text-red-500 text-xs mt-1">
-                格式应为 A1A 1A1 / Format: A1A 1A1
+              <p className="text-red-600 text-caption mt-1">
+                格式应为 A1A 1A1
               </p>
             )}
           </div>
 
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-              手机号 <span className="text-gray-400 font-normal">（可选）</span>
+            <label htmlFor="phone" className="block text-body font-medium text-ink mb-1">
+              手机号 <span className="text-ink-soft font-normal">（可选）</span>
             </label>
             <input
               id="phone"
@@ -82,7 +82,7 @@ export default function OnboardingPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+1 (416) 000-0000"
-              className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-body focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -91,16 +91,16 @@ export default function OnboardingPage() {
           <button
             onClick={() => save(false)}
             disabled={loading || !postalValid}
-            className="w-full bg-blue-600 text-white rounded-xl py-3 text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-brand text-white rounded-xl py-3.5 text-body font-semibold hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "保存中..." : "开始使用 / Get started"}
+            {loading ? "保存中..." : "开始使用"}
           </button>
           <button
             onClick={() => save(true)}
             disabled={loading}
-            className="w-full text-gray-400 text-sm hover:text-gray-600 py-1"
+            className="w-full text-ink-soft text-body hover:text-gray-700 py-1"
           >
-            跳过 / Skip
+            跳过
           </button>
         </div>
       </div>
